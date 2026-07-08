@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+</head>
+<body>
+<div id="map" style="width: 400px; height: 400px;"></div>
+<script>
+    var map = new maplibregl.Map({
+        container: 'map',
+        style: { version: 8, sources: {}, layers: [] },
+        center: [5, 5], zoom: 4
+    });
+    map.on('load', () => {
+        const img = new Image();
+        img.src = 'data:image/svg+xml;utf8,<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="2" fill="%2310b981" opacity="0.3"/></svg>';
+        img.onload = () => {
+            map.addImage('dot', img);
+            console.log('loaded');
+        }
+    });
+</script>
+</body>
+</html>

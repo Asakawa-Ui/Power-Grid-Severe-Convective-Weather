@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+</head>
+<body>
+<div id="map" style="width: 400px; height: 400px;"></div>
+<script>
+    var map = new maplibregl.Map({
+        container: 'map',
+        style: {
+            version: 8,
+            sources: {
+                'box': {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Polygon',
+                            coordinates: [[[0,0], [10,0], [10,10], [0,10], [0,0]]]
+                        }
+                    }
+                }
+            },
+            layers: [
+                {
+                    id: 'extrude',
+                    type: 'fill-extrusion',
+                    source: 'box',
+                    paint: {
+                        'fill-extrusion-color': '#f00',
+                        'fill-extrusion-height': 0,
+                        'fill-extrusion-base': -1000000
+                    }
+                }
+            ]
+        },
+        center: [5, 5],
+        zoom: 4,
+        pitch: 45
+    });
+    map.on('load', () => console.log('loaded'));
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "电网强对流灾害指挥系统",
+  "description": "Power Grid Severe Convective Disaster Artificial Intervention Operation Command System",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
