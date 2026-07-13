@@ -23,7 +23,7 @@ export const weatherPoints: WeatherPoint[] = [
     "id": "wp-hb-new2",
     "name": "大冶金湖作业点",
     "coord": [114.87528, 30.07444],
-    "type": "gun",
+    "type": "rocket",
     "status": "completed",
     "region": "湖北地块"
   },
@@ -39,7 +39,7 @@ export const weatherPoints: WeatherPoint[] = [
     "id": "wp-hb-new4",
     "name": "沿湖生态园作业点",
     "coord": [115.08306, 30.13500],
-    "type": "vehicle",
+    "type": "rocket",
     "status": "ready",
     "region": "湖北地块"
   },
@@ -55,7 +55,7 @@ export const weatherPoints: WeatherPoint[] = [
     "id": "wp-hb-new6",
     "name": "白沙作业点",
     "coord": [115.04722, 29.96778],
-    "type": "gun",
+    "type": "rocket",
     "status": "completed",
     "region": "湖北地块"
   },

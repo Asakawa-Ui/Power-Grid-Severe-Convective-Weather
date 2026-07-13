@@ -6,8 +6,27 @@ import * as turf from '@turf/turf';
 import { powerLines } from '../utils/powerLines';
 import { weatherPoints, WeatherPoint } from '../utils/weatherPoints';
 import { warningAreas } from "../utils/warningAreas";
+import { getHistorySiteDetails } from './EffectEvaluationRight';
 
-const TDT_KEY = (import.meta as any).env?.VITE_TDT_KEY || '1d3ede6b2f0e89e9eed057f2424239a3';
+const TDT_KEYS = [
+  '1d3ede6b2f0e89e9eed057f2424239a3',
+  '7ec6e34789ec3b7b2b63c873f13f3600',
+  '210c4f0e9b25114704b7e8055eeef112',
+  'f8303f26017b2b63cbdd977b3117565c',
+  '5a1f6a1d828453cc14b436c6464244df',
+  '7e5da3c23c72b22b2bf7b25e73ef13ff',
+  'df77b06b93ec2f1f2a3c71ea407c3f36',
+  '9a41b594bbfb9f697b0a701a5b82c2a3'
+];
+
+const ENV_KEY = (import.meta as any).env?.VITE_TDT_KEY;
+const ALL_KEYS = ENV_KEY ? [ENV_KEY, ...TDT_KEYS] : TDT_KEYS;
+
+const getRandomKey = () => {
+  return ALL_KEYS[Math.floor(Math.random() * ALL_KEYS.length)];
+};
+
+const TDT_KEY = getRandomKey();
 
 const createTdtSource = (layerCode: string) => ({
   type: 'raster' as const,
@@ -31,19 +50,44 @@ const regionCodes: Record<string, string> = {
 interface Props {
   activeRegion?: string;
   onPointClick?: (point: WeatherPoint) => void;
+  isCaseMode?: boolean;
+  playbackMinutes?: number;
+  normalMinutes?: number;
+  activeNav?: string;
+  selectedHistoryId?: string;
 }
 
-export default function Map3D({ activeRegion = '湖北地块', onPointClick }: Props) {
+export default function Map3D({ 
+  activeRegion = '湖北地块', 
+  onPointClick, 
+  isCaseMode = false, 
+  playbackMinutes = 0,
+  normalMinutes = 1080,
+  activeNav = '作业指挥',
+  selectedHistoryId = 'h1'
+}: Props) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [mapType, setMapType] = useState<'vec' | 'img' | 'ter'>('ter');
+
+  const provinceFeatureRef = useRef<any>(null);
+  const currentRegionRef = useRef<string>('');
 
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
+      attributionControl: false,
+      transformRequest: (url: string) => {
+        if (url.includes('tianditu.gov.cn')) {
+          const selectedKey = getRandomKey();
+          const newUrl = url.replace(/tk=[a-zA-Z0-9]+/, `tk=${selectedKey}`);
+          return { url: newUrl };
+        }
+        return { url };
+      },
       style: {
         version: 8,
         sources: {
@@ -104,17 +148,40 @@ export default function Map3D({ activeRegion = '湖北地块', onPointClick }: P
       maxPitch: 85
     });
 
+    map.current.on('error', (e) => {
+      // Gracefully capture and suppress map tile loading errors (like 429 Too Many Requests or 404)
+      const msg = e.message || '';
+      const isExpectedTileError = msg.includes('429') || msg.includes('404') || e.error?.status === 429 || e.error?.status === 404;
+      if (isExpectedTileError) {
+        return;
+      }
+      console.warn('MapLibre gracefully handled error:', e);
+    });
+
     map.current.addControl(
       new maplibregl.NavigationControl({
         visualizePitch: true,
         showZoom: true,
         showCompass: true
       }),
-      'bottom-right'
+      'top-right'
     );
 
     map.current.once('load', () => {
     });
+
+    const checkZoom = () => {
+      if (!map.current || !mapContainer.current) return;
+      const currentZoom = map.current.getZoom();
+      if (currentZoom >= 9.5) {
+        mapContainer.current.classList.add('show-site-labels');
+      } else {
+        mapContainer.current.classList.remove('show-site-labels');
+      }
+    };
+
+    map.current.on('zoom', checkZoom);
+    checkZoom();
 
 
 
@@ -129,6 +196,7 @@ export default function Map3D({ activeRegion = '湖北地块', onPointClick }: P
   useEffect(() => {
     if (!map.current) return;
     const mapInstance = map.current;
+    let cancelled = false;
 
     const updateMask = async () => {
       const code = regionCodes[activeRegion];
@@ -144,6 +212,7 @@ export default function Map3D({ activeRegion = '湖北地块', onPointClick }: P
         ];
         
         for (const url of urls) {
+          if (cancelled) return;
           try {
             const response = await fetch(url);
             if (response.ok) {
@@ -155,12 +224,17 @@ export default function Map3D({ activeRegion = '湖北地块', onPointClick }: P
           }
         }
         
+        if (cancelled) return;
         if (!res || !res.ok) {
           throw new Error(`Failed to fetch from any URLs for geo code: ${code}`);
         }
         
         const data = await res.json();
+        if (cancelled) return;
         const provinceFeature = data.features[0];
+        provinceFeatureRef.current = provinceFeature;
+        
+        if (!mapInstance || !mapInstance.style || !mapInstance.getStyle) return;
         
         const bbox = turf.bbox(provinceFeature);
         mapInstance.fitBounds(bbox as [number, number, number, number], {
@@ -183,25 +257,54 @@ export default function Map3D({ activeRegion = '湖北地块', onPointClick }: P
             return false;
           }
         }).forEach(wp => {
+            // Override status/type if in Case Study Mode
+            let currentStatus = wp.status;
+            let currentType = wp.type;
+            
+            if (isCaseMode && activeRegion === '湖北地块') {
+              const mins = playbackMinutes;
+              if (wp.id === 'wp-hb-new2') { // 大冶金湖 (17:18-17:19)
+                if (mins < 133) currentStatus = 'none'; // Starts 15:00. 17:13 is minute 133 (5 mins before 17:18)
+                else if (mins < 138) currentStatus = 'ready'; // 17:13 - 17:18
+                else if (mins < 139) currentStatus = 'operating'; // 17:18 - 17:19
+                else currentStatus = 'completed'; // after 17:19
+              } else if (wp.id === 'wp-hb-new3') { // 刘仁八 (15:28-15:29)
+                if (mins < 23) currentStatus = 'none'; // 15:23 is minute 23 (5 mins before 15:28)
+                else if (mins < 28) currentStatus = 'ready'; // 15:23 - 15:28
+                else if (mins < 29) currentStatus = 'operating'; // 15:28 - 15:29
+                else currentStatus = 'completed'; // after 15:29
+              } else if (wp.id === 'wp-hb-new6') { // 白沙 (15:18-15:19)
+                if (mins < 13) currentStatus = 'none'; // 15:13 is minute 13 (5 mins before 15:18)
+                else if (mins < 18) currentStatus = 'ready'; // 15:13 - 15:18
+                else if (mins < 19) currentStatus = 'operating'; // 15:18 - 15:19
+                else currentStatus = 'completed'; // after 15:19
+              } else {
+                currentStatus = 'none'; // "其他所有站点都是无状态"
+              }
+              if (wp.id.startsWith('wp-hb-new')) {
+                currentType = 'rocket';
+              }
+            }
+
             const el = document.createElement('div');
             el.className = 'w-4 h-4 flex items-center justify-center relative cursor-pointer group';
             
             let colorClass = 'text-[#94a3b8]'; // none
-            if (wp.status === 'ready') colorClass = 'text-[#84b676]';
-            else if (wp.status === 'operating') colorClass = 'text-[#e3d122]';
-            else if (wp.status === 'completed') colorClass = 'text-[#8b10ec]';
-            else if (wp.status === 'canceled') colorClass = 'text-[#df5a5a]';
+            if (currentStatus === 'ready') colorClass = 'text-[#84b676]';
+            else if (currentStatus === 'operating') colorClass = 'text-[#e3d122]';
+            else if (currentStatus === 'completed') colorClass = 'text-[#8b10ec]';
+            else if (currentStatus === 'canceled') colorClass = 'text-[#df5a5a]';
 
             const root = createRoot(el);
             
             const Shape = () => {
-              if (wp.type === 'rocket') {
+              if (currentType === 'rocket') {
                 return (
                   <svg width="14" height="14" viewBox="0 0 14 14" className={`overflow-visible ${colorClass}`} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}>
                     <circle cx="7" cy="7" r="6" fill="currentColor" stroke="white" strokeWidth="1.5" />
                   </svg>
                 );
-              } else if (wp.type === 'gun') {
+              } else if (currentType === 'gun') {
                 return (
                   <svg width="14" height="14" viewBox="0 0 14 14" className={`overflow-visible ${colorClass}`} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}>
                     <polygon points="7,1 13,12 1,12" fill="currentColor" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
@@ -219,15 +322,23 @@ export default function Map3D({ activeRegion = '湖北地块', onPointClick }: P
             root.render(
               <div className="w-full h-full relative flex items-center justify-center group-hover:scale-125 transition-transform duration-300">
                 <Shape />
+                {currentStatus === 'operating' && (
+                  <span className="absolute w-6 h-6 rounded-full bg-yellow-400/40 animate-ping" />
+                )}
+                <div className="site-label absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
+                  {wp.name}
+                </div>
               </div>
             );
 
             const marker = new maplibregl.Marker({ element: el })
               .setLngLat(wp.coord as [number, number]);
             
+            const updatedWp = { ...wp, status: currentStatus, type: currentType };
+
             if (onPointClick) {
               el.addEventListener('click', () => {
-                onPointClick(wp);
+                onPointClick(updatedWp);
               });
             } else {
               marker.setPopup(new maplibregl.Popup({ offset: 15, closeButton: false }).setHTML(`
@@ -237,20 +348,20 @@ export default function Map3D({ activeRegion = '湖北地块', onPointClick }: P
                     <p class="text-xs text-slate-600 flex items-center justify-between">
                       <span>状态</span>
                       <span class="font-bold px-1.5 py-0.5 rounded-sm bg-slate-100 ${
-                        wp.status === 'ready' ? 'text-[#84b676]' : 
-                        wp.status === 'operating' ? 'text-[#e3d122]' : 
-                        wp.status === 'completed' ? 'text-[#8b10ec]' : 
-                        wp.status === 'canceled' ? 'text-[#df5a5a]' : 'text-[#94a3b8]'
+                        currentStatus === 'ready' ? 'text-[#84b676]' : 
+                        currentStatus === 'operating' ? 'text-[#e3d122]' : 
+                        currentStatus === 'completed' ? 'text-[#8b10ec]' : 
+                        currentStatus === 'canceled' ? 'text-[#df5a5a]' : 'text-[#94a3b8]'
                       }">${
-                        wp.status === 'ready' ? '就绪' : 
-                        wp.status === 'operating' ? '作业' : 
-                        wp.status === 'completed' ? '完成' : 
-                        wp.status === 'canceled' ? '取消' : '无状态'
+                        currentStatus === 'ready' ? '就绪' : 
+                        currentStatus === 'operating' ? '作业' : 
+                        currentStatus === 'completed' ? '完成' : 
+                        currentStatus === 'canceled' ? '取消' : '无状态'
                       }</span>
                     </p>
                     <p class="text-xs text-slate-600 flex items-center justify-between">
                       <span>类型</span>
-                      <span class="font-medium text-slate-700">${wp.type === 'rocket' ? '火箭弹' : wp.type === 'gun' ? '高炮' : '作业车'}</span>
+                      <span class="font-medium text-slate-700">${currentType === 'rocket' ? '火箭弹' : currentType === 'gun' ? '高炮' : '作业车'}</span>
                     </p>
                   </div>
                 </div>
@@ -487,7 +598,9 @@ export default function Map3D({ activeRegion = '湖北地块', onPointClick }: P
         }
 
       } catch (e) {
-        console.error('Failed to load province boundary or initialize layers', e);
+        if (!cancelled) {
+          console.error('Failed to load province boundary or initialize layers', e);
+        }
       }
     };
 
@@ -496,38 +609,214 @@ export default function Map3D({ activeRegion = '湖北地块', onPointClick }: P
     } else {
       mapInstance.once('load', updateMask);
     }
-  }, [activeRegion]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRegion, isCaseMode, playbackMinutes]);
 
   useEffect(() => {
-    const handleSimulate = () => {
-      const mapInstance = map.current;
-      if (!mapInstance) return;
+    const mapInstance = map.current;
+    if (!mapInstance) return;
 
-      const startCoord: [number, number] = [111.0753, 31.275]; // 林家村火箭点
-      
-      mapInstance.flyTo({
-        center: startCoord,
-        zoom: 12.5,
-        pitch: 60,
-        bearing: -30, // View from South-West
-        duration: 2000
-      });
+    const setupEvaluation = () => {
+      if (activeNav === '效果评估' && activeRegion === '湖北地块') {
+        const siteDetails = getHistorySiteDetails(selectedHistoryId);
+        const start = siteDetails.coord;
+        const azimuthVal = parseInt(siteDetails.azimuth) || 225;
+        const bearingRad = (azimuthVal * Math.PI) / 180;
 
-      setTimeout(() => {
-        import('../utils/ThreeJSLayer').then(({ RocketTrajectoryLayer }) => {
-            if (mapInstance.getLayer('rocket-trajectory')) {
-                mapInstance.removeLayer('rocket-trajectory');
-            }
-            
-            const customLayer = new RocketTrajectoryLayer(startCoord, 45, 8, 4);
-            mapInstance.addLayer(customLayer);
+        // Dynamic end (impact) point & risk center based on azimuth and firing range
+        const end: [number, number] = [
+          start[0] + 0.06 * Math.sin(bearingRad),
+          start[1] + 0.06 * Math.cos(bearingRad)
+        ];
+        const riskCenter: [number, number] = [
+          start[0] + 0.035 * Math.sin(bearingRad),
+          start[1] + 0.035 * Math.cos(bearingRad)
+        ];
+
+        // Fly camera to focus on the active site's trajectory and risk zone, matching the bearing!
+        mapInstance.flyTo({
+          center: [riskCenter[0], riskCenter[1]],
+          zoom: 12.0,
+          pitch: 52,
+          bearing: azimuthVal - 180,
+          duration: 2000
         });
-      }, 2000); // Wait for flyTo to finish
+
+        // 1. Generate Trajectory Curve (arc)
+        const arcCoords = [];
+        const segments = 50;
+        for (let i = 0; i <= segments; i++) {
+          const t = i / segments;
+          const lng = start[0] + (end[0] - start[0]) * t;
+          const lat = start[1] + (end[1] - start[1]) * t + Math.sin(t * Math.PI) * 0.015;
+          arcCoords.push([lng, lat]);
+        }
+
+        // 2. Generate High Risk Area Polygon (turf.circle)
+        const riskCircle = (turf as any).circle(turf.point(riskCenter), 3.0, { units: 'kilometers' });
+
+        const evalGeoJson = {
+          type: 'FeatureCollection',
+          features: [
+            {
+              type: 'Feature',
+              properties: { type: 'trajectory', name: '轨迹' },
+              geometry: { type: 'LineString', coordinates: arcCoords }
+            },
+            {
+              type: 'Feature',
+              properties: { type: 'launch', name: '发射点' },
+              geometry: { type: 'Point', coordinates: start }
+            },
+            {
+              type: 'Feature',
+              properties: { type: 'impact', name: '落点' },
+              geometry: { type: 'Point', coordinates: end }
+            },
+            {
+              type: 'Feature',
+              properties: { type: 'risk_area', name: '高风险' },
+              geometry: riskCircle.geometry
+            }
+          ]
+        };
+
+        const sourceId = 'eval-source';
+        const source = mapInstance.getSource(sourceId) as maplibregl.GeoJSONSource;
+        if (source) {
+          source.setData(evalGeoJson as any);
+        } else {
+          mapInstance.addSource(sourceId, {
+            type: 'geojson',
+            data: evalGeoJson as any
+          });
+        }
+
+        // Add layers if they don't exist, and set visibility to 'visible'
+        const layers = [
+          {
+            id: 'eval-risk-layer',
+            type: 'fill',
+            source: sourceId,
+            filter: ['==', ['get', 'type'], 'risk_area'],
+            paint: {
+              'fill-color': '#f97316',
+              'fill-opacity': 0.18
+            }
+          },
+          {
+            id: 'eval-risk-border',
+            type: 'line',
+            source: sourceId,
+            filter: ['==', ['get', 'type'], 'risk_area'],
+            paint: {
+              'line-color': '#f97316',
+              'line-width': 2,
+              'line-dasharray': [2, 2]
+            }
+          },
+          {
+            id: 'eval-trajectory-glow',
+            type: 'line',
+            source: sourceId,
+            filter: ['==', ['get', 'type'], 'trajectory'],
+            paint: {
+              'line-color': '#10b981',
+              'line-width': 8,
+              'line-opacity': 0.4,
+              'line-blur': 4
+            }
+          },
+          {
+            id: 'eval-trajectory-line',
+            type: 'line',
+            source: sourceId,
+            filter: ['==', ['get', 'type'], 'trajectory'],
+            paint: {
+              'line-color': '#ffffff',
+              'line-width': 3,
+              'line-opacity': 1.0
+            }
+          },
+          {
+            id: 'eval-launch-circle',
+            type: 'circle',
+            source: sourceId,
+            filter: ['==', ['get', 'type'], 'launch'],
+            paint: {
+              'circle-color': '#10b981',
+              'circle-radius': 8,
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ffffff'
+            }
+          },
+          {
+            id: 'eval-impact-circle',
+            type: 'circle',
+            source: sourceId,
+            filter: ['==', ['get', 'type'], 'impact'],
+            paint: {
+              'circle-color': '#ef4444',
+              'circle-radius': 10,
+              'circle-stroke-width': 3,
+              'circle-stroke-color': '#ffffff'
+            }
+          },
+          {
+            id: 'eval-labels',
+            type: 'symbol',
+            source: sourceId,
+            filter: ['in', ['get', 'type'], ['literal', ['launch', 'impact', 'risk_area']]],
+            layout: {
+              'text-field': ['get', 'name'],
+              'text-size': 11,
+              'text-offset': [0, 1.4],
+              'text-anchor': 'top'
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': '#1e293b',
+              'text-halo-width': 2
+            }
+          }
+        ];
+
+        layers.forEach(lyr => {
+          if (!mapInstance.getLayer(lyr.id)) {
+            mapInstance.addLayer(lyr as any);
+          } else {
+            mapInstance.setLayoutProperty(lyr.id, 'visibility', 'visible');
+          }
+        });
+
+      } else {
+        // Hide evaluation layers if they exist
+        const evalLayerIds = [
+          'eval-risk-layer',
+          'eval-risk-border',
+          'eval-trajectory-glow',
+          'eval-trajectory-line',
+          'eval-launch-circle',
+          'eval-impact-circle',
+          'eval-labels'
+        ];
+        evalLayerIds.forEach(id => {
+          if (mapInstance.getLayer(id)) {
+            mapInstance.setLayoutProperty(id, 'visibility', 'none');
+          }
+        });
+      }
     };
 
-    window.addEventListener('simulate-trajectory', handleSimulate);
-    return () => window.removeEventListener('simulate-trajectory', handleSimulate);
-  }, []);
+    if (mapInstance.isStyleLoaded()) {
+      setupEvaluation();
+    } else {
+      mapInstance.once('load', setupEvaluation);
+    }
+  }, [activeNav, activeRegion, selectedHistoryId]);
 
   useEffect(() => {
     const mapInstance = map.current;
@@ -558,30 +847,79 @@ export default function Map3D({ activeRegion = '湖北地块', onPointClick }: P
     }
   }, [mapType]);
 
+  useEffect(() => {
+    const mapInstance = map.current;
+    if (!mapInstance) return;
+
+    const handleEnterCase = () => {
+      mapInstance.flyTo({
+        center: [115.02, 30.08],
+        zoom: 11,
+        pitch: 45,
+        bearing: 0,
+        duration: 3000
+      });
+    };
+
+    const handleExitCase = () => {
+      const code = regionCodes[activeRegion];
+      if (code && provinceFeatureRef.current) {
+        const bbox = turf.bbox(provinceFeatureRef.current);
+        mapInstance.fitBounds(bbox as [number, number, number, number], {
+          padding: { top: 100, bottom: 100, left: 200, right: 350 },
+          pitch: 45,
+          duration: 2000
+        });
+      }
+    };
+
+    const handleFocusSite = (e: Event) => {
+      const customEvent = e as CustomEvent<{ siteName: string }>;
+      const siteName = customEvent.detail?.siteName;
+      if (siteName) {
+        const point = weatherPoints.find(p => p.name === siteName || p.name.includes(siteName) || siteName.includes(p.name));
+        if (point) {
+          mapInstance.flyTo({
+            center: point.coord,
+            zoom: 12.5,
+            pitch: 50,
+            duration: 2000
+          });
+        }
+      }
+    };
+
+    window.addEventListener('enter-case-mode', handleEnterCase);
+    window.addEventListener('exit-case-mode', handleExitCase);
+    window.addEventListener('map-focus-site', handleFocusSite);
+
+    return () => {
+      window.removeEventListener('enter-case-mode', handleEnterCase);
+      window.removeEventListener('exit-case-mode', handleExitCase);
+      window.removeEventListener('map-focus-site', handleFocusSite);
+    };
+  }, [activeRegion]);
+
+  // Calculate snapped radar actual time (6 minutes interval)
+  const totalMinutes = isCaseMode ? (playbackMinutes + 15 * 60) : normalMinutes;
+  const radarMinutes = Math.floor(totalMinutes / 6) * 6;
+  const h = Math.floor(radarMinutes / 60) % 24;
+  const m = radarMinutes % 60;
+  const formattedTimeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  const formattedDateStr = isCaseMode ? '2026-06-18' : '2026-07-07';
+  const radarLabel = `全国组网-组合反射率 ${formattedDateStr} ${formattedTimeStr}`;
+
   return (
     <div className="absolute inset-0 z-0">
       <div ref={mapContainer} className="w-full h-full bg-slate-200" />
       
-      {/* 天地图图层切换器 */}
-      <div className="absolute bottom-6 left-6 z-40 bg-white/95 backdrop-blur-md shadow-lg border border-slate-200/80 rounded-xl p-1 flex gap-1 text-xs font-semibold">
-        <button
-          onClick={() => setMapType('ter')}
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-all duration-200 ${mapType === 'ter' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
-        >
-          <span>地形地图</span>
-        </button>
-        <button
-          onClick={() => setMapType('img')}
-          className={`flex items-all gap-1 px-3 py-1.5 rounded-lg transition-all duration-200 ${mapType === 'img' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
-        >
-          <span>影像地图</span>
-        </button>
-        <button
-          onClick={() => setMapType('vec')}
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-all duration-200 ${mapType === 'vec' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
-        >
-          <span>矢量地图</span>
-        </button>
+      {/* 雷达产品实际数据时刻 */}
+      <div className="absolute top-3 left-3 z-40 bg-black/40 backdrop-blur-sm text-white text-[11px] font-sans font-medium px-2 py-1 rounded-sm border border-white/10 flex items-center gap-1.5 pointer-events-none">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+        </span>
+        <span>{radarLabel}</span>
       </div>
     </div>
   );

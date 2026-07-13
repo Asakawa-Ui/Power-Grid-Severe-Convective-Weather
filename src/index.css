@@ -18,3 +18,10 @@
     display: none;
   }
 }
+
+.site-label {
+  display: none !important;
+}
+.show-site-labels .site-label {
+  display: block !important;
+}

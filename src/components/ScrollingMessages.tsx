@@ -1,35 +1,93 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Volume2 } from 'lucide-react';
 
 const MOCK_MESSAGES = [
-  "11:40, 林家村火箭点准备作业",
-  "11:41, 林家村火箭点开始作业",
-  "11:45, 林家村火箭点完成作业，本次共发射火箭弹8枚，作业区域降水明显增强。",
-  "12:05, 沙河铺高炮站请求作业，空域协调中...",
-  "12:15, 沙河铺高炮站空域已获批，开始作业"
+  "18:10, 姜祥村作业点准备就绪",
+  "18:15, 姜祥村作业点作业开始，发射火箭弹8枚",
+  "18:16, 姜祥村作业点作业完成",
+  "18:20, 姜祥村作业点作业信息已上报",
+  "18:25, 太山作业点准备就绪",
+  "18:30, 太山作业点作业取消",
+  "18:35, 沿湖生态园作业点准备就绪",
+  "18:40, 沿湖生态园作业点作业开始，发射火箭弹6枚",
+  "18:41, 沿湖生态园作业点作业完成",
+  "18:45, 沿湖生态园作业点作业信息已上报"
 ];
 
-export default function ScrollingMessages() {
+const CASE_MESSAGES = [
+  { minutes: 13, text: "15:13, 白沙作业点准备就绪" },
+  { minutes: 18, text: "15:18, 白沙作业点作业开始" },
+  { minutes: 19, text: "15:19, 白沙作业点作业完成" },
+  { minutes: 22, text: "15:22, 白沙作业点作业信息已上报" },
+  { minutes: 23, text: "15:23, 刘仁八作业点准备就绪" },
+  { minutes: 28, text: "15:28, 刘仁八作业点作业开始" },
+  { minutes: 29, text: "15:29, 刘仁八作业点作业完成" },
+  { minutes: 32, text: "15:32, 刘仁八作业点作业信息已上报" },
+  { minutes: 133, text: "17:13, 大冶金湖作业点准备就绪" },
+  { minutes: 138, text: "17:18, 大冶金湖作业点作业开始" },
+  { minutes: 139, text: "17:19, 大冶金湖作业点作业完成" },
+  { minutes: 142, text: "17:22, 大冶金湖作业点作业信息已上报" }
+];
+
+interface ScrollingMessagesProps {
+  isCaseMode?: boolean;
+  playbackMinutes?: number;
+}
+
+export default function ScrollingMessages({ isCaseMode = false, playbackMinutes = 0 }: ScrollingMessagesProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const [shouldScroll, setShouldScroll] = useState(false);
 
   useEffect(() => {
+    if (isCaseMode) return;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % MOCK_MESSAGES.length);
     }, 10000); // 10 seconds for the marquee to complete
     return () => clearInterval(timer);
-  }, []);
+  }, [isCaseMode]);
+
+  let activeMessage = '';
+  if (isCaseMode) {
+    const unlocked = CASE_MESSAGES.filter(m => m.minutes <= playbackMinutes);
+    if (unlocked.length > 0) {
+      activeMessage = unlocked[unlocked.length - 1].text;
+    } else {
+      activeMessage = "暂无最新作业动态";
+    }
+  } else {
+    activeMessage = MOCK_MESSAGES[currentIndex];
+  }
+
+  useEffect(() => {
+    const checkScroll = () => {
+      if (containerRef.current && textRef.current) {
+        const containerWidth = containerRef.current.clientWidth;
+        const textWidth = textRef.current.scrollWidth;
+        setShouldScroll(textWidth > containerWidth);
+      }
+    };
+    
+    const timeoutId = setTimeout(checkScroll, 30);
+    return () => clearTimeout(timeoutId);
+  }, [activeMessage]);
 
   return (
-    <div className="absolute top-44 left-1/2 -translate-x-1/2 z-40 w-[420px] pointer-events-none">
-      <div className="bg-white/95 backdrop-blur-md shadow-lg px-6 py-3.5 rounded-full border border-slate-200/80 flex items-center gap-3 overflow-hidden">
-        <Volume2 className="w-4 h-4 text-blue-500 shrink-0 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+    <div className="absolute top-44 left-1/2 -translate-x-1/2 z-40 w-[340px] pointer-events-none">
+      <div className="bg-white/30 backdrop-blur-md shadow-lg px-4 py-2.5 rounded-full border border-slate-200/30 flex items-center gap-2.5 overflow-hidden">
+        <Volume2 className="w-3.5 h-3.5 text-blue-500 shrink-0 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
         
-        <div className="flex-1 overflow-hidden relative h-6">
+        <div ref={containerRef} className="flex-1 overflow-hidden relative h-5 flex items-center justify-center">
           <div 
-            key={currentIndex}
-            className="absolute left-0 text-slate-800 text-[15px] font-medium whitespace-nowrap animate-marquee"
+            ref={textRef}
+            key={activeMessage}
+            className={shouldScroll
+              ? "absolute left-0 text-slate-800 text-[12.5px] font-medium whitespace-nowrap animate-marquee"
+              : "relative text-slate-800 text-[12.5px] font-medium whitespace-nowrap text-center"
+            }
           >
-            {MOCK_MESSAGES[currentIndex]}
+            {activeMessage}
           </div>
         </div>
       </div>

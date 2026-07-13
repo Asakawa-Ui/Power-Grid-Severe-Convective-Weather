@@ -2,8 +2,54 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { WeatherPoint } from '../utils/weatherPoints';
 
+const getPointLocationAndAddress = (point: WeatherPoint) => {
+  const name = point.name;
+  if (name.includes('铁山南')) {
+    return { location: '湖北省 黄石市', address: '黄石市铁山区铁山南路28号' };
+  }
+  if (name.includes('金湖') || name.includes('大冶金湖')) {
+    return { location: '湖北省 黄石市', address: '黄石市大冶市金湖街道金湖大道' };
+  }
+  if (name.includes('刘仁八')) {
+    return { location: '湖北省 黄石市', address: '黄石市大冶市刘仁八镇刘仁八村' };
+  }
+  if (name.includes('沿湖生态园')) {
+    return { location: '湖北省 黄石市', address: '黄石市大冶市沿湖生态园内' };
+  }
+  if (name.includes('姜祥村')) {
+    return { location: '湖北省 黄石市', address: '黄石市大冶市汪仁镇姜祥村' };
+  }
+  if (name.includes('白沙')) {
+    return { location: '湖北省 黄石市', address: '黄石市大冶市白沙镇白沙村' };
+  }
+  if (name.includes('太子')) {
+    return { location: '湖北省 黄石市', address: '黄石市大冶市太子镇太子村' };
+  }
+
+  // Default fallbacks based on region
+  if (point.region === '湖北地块') {
+    if (name.includes('十堰') || name.includes('武当山')) {
+      return { location: '湖北省 十堰市', address: `十堰市茅箭区${name}内` };
+    }
+    return { location: '湖北省 十堰市', address: `十堰市${name}内` };
+  }
+  if (point.region === '四川地块') {
+    return { location: '四川省 成都市', address: `成都市龙泉驿区${name}内` };
+  }
+  if (point.region === '安徽地块') {
+    return { location: '安徽省 合肥市', address: `合肥市蜀山区${name}内` };
+  }
+  if (point.region === '江苏地块') {
+    return { location: '江苏省 南京市', address: `南京市玄武区${name}内` };
+  }
+
+  return { location: '湖北省 十堰市', address: `十堰市${name}内` };
+};
+
 export default function MapPopup({ point, onClose }: { point: WeatherPoint | null, onClose: () => void }) {
   if (!point) return null;
+
+  const { location, address } = getPointLocationAndAddress(point);
 
   return (
     <div className="absolute top-1/2 left-1/2 -translate-x-[200px] -translate-y-1/2 z-50 bg-white/95 backdrop-blur-md shadow-2xl border border-slate-200/80 rounded-xl w-[460px] overflow-hidden">
@@ -31,11 +77,11 @@ export default function MapPopup({ point, onClose }: { point: WeatherPoint | nul
           </div>
           <div className="flex text-xs items-center border-b border-slate-50 pb-1 col-span-2">
             <span className="w-[60px] text-slate-500 mr-2 font-medium shrink-0">地理位置:</span>
-            <span className="text-slate-800 font-medium truncate">湖北 十堰市</span>
+            <span className="text-slate-800 font-medium truncate">{location}</span>
           </div>
           <div className="flex text-xs items-center border-b border-slate-50 pb-1 col-span-2">
             <span className="w-[60px] text-slate-500 mr-2 font-medium shrink-0">详细地址:</span>
-            <span className="text-slate-800 font-medium truncate" title={`十堰市${point.name}内`}>十堰市{point.name}内</span>
+            <span className="text-slate-800 font-medium truncate" title={address}>{address}</span>
           </div>
           <div className="flex text-xs items-center border-b border-slate-50 pb-1">
             <span className="w-[40px] text-slate-500 mr-2 font-medium shrink-0">类型:</span>

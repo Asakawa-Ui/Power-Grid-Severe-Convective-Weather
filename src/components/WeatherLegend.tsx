@@ -1,6 +1,10 @@
 import React from 'react';
 
-export default function WeatherLegend() {
+interface WeatherLegendProps {
+  activeNav: string;
+}
+
+export default function WeatherLegend({ activeNav }: WeatherLegendProps) {
   const statuses = [
     { label: '无状态', color: 'text-[#94a3b8]' },
     { label: '就绪', color: 'text-[#84b676]' },
@@ -48,56 +52,58 @@ export default function WeatherLegend() {
     { label: '黄色', border: 'border-[#ca8a04]', bg: 'bg-[#eab308]/30' },
   ];
 
+  const rightPosition = activeNav === '作业指挥' ? 'right-[396px]' : 'right-[356px]';
+
   return (
-    <div className="absolute bottom-[116px] right-[356px] z-40 bg-white/80 backdrop-blur-md shadow-lg px-5 py-4 flex flex-col gap-4 rounded-md text-slate-700 border border-slate-200/50 whitespace-nowrap">
-      <div className="flex items-center gap-6">
-        <span className="text-xs font-bold tracking-wider text-slate-500 w-12 text-right shrink-0">状态</span>
-        <div className="flex items-center gap-5">
+    <div className={`absolute bottom-[116px] ${rightPosition} z-40 bg-white/75 backdrop-blur-md px-4 py-3 flex flex-col gap-2.5 rounded-xl text-slate-700 border border-slate-200/60 whitespace-nowrap transition-all duration-300`}>
+      <div className="flex items-center gap-4">
+        <span className="text-[10.5px] font-bold tracking-wider text-slate-500 w-12 text-right shrink-0">状态</span>
+        <div className="flex items-center gap-3.5">
           {statuses.map((s) => (
-            <div key={s.label} className="flex items-center gap-2">
-              <div className={`w-2.5 h-2.5 rounded-full shadow-inner border border-black/5 bg-current ${s.color}`} />
-              <span className="text-xs font-medium">{s.label}</span>
+            <div key={s.label} className="flex items-center gap-1.5">
+              <div className={`w-2 h-2 rounded-full shadow-inner border border-black/5 bg-current ${s.color}`} />
+              <span className="text-[10.5px] font-medium">{s.label}</span>
             </div>
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-6">
-        <span className="text-xs font-bold tracking-wider text-slate-500 w-12 text-right shrink-0">类型</span>
-        <div className="flex items-center gap-5">
+      <div className="flex items-center gap-4">
+        <span className="text-[10.5px] font-bold tracking-wider text-slate-500 w-12 text-right shrink-0">类型</span>
+        <div className="flex items-center gap-3.5">
           {shapes.map((s) => (
-            <div key={s.label} className="flex items-center gap-2">
-              <div className="w-4 h-4 flex items-center justify-center filter drop-shadow-sm">
+            <div key={s.label} className="flex items-center gap-1.5">
+              <div className="w-3.5 h-3.5 flex items-center justify-center filter drop-shadow-sm">
                 {s.svg}
               </div>
-              <span className="text-xs font-medium">{s.label}</span>
+              <span className="text-[10.5px] font-medium">{s.label}</span>
             </div>
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-6">
-        <span className="text-xs font-bold tracking-wider text-slate-500 w-12 text-right shrink-0">输电线路</span>
-        <div className="flex items-center gap-5">
+      <div className="flex items-center gap-4">
+        <span className="text-[10.5px] font-bold tracking-wider text-slate-500 w-12 text-right shrink-0">输电线路</span>
+        <div className="flex items-center gap-3.5">
           {lines.map((l) => (
-            <div key={l.label} className="flex items-center gap-2">
-              <div className={`w-4 h-0.5 ${l.color}`} />
-              <span className="text-xs font-medium">{l.label}</span>
+            <div key={l.label} className="flex items-center gap-1.5">
+              <div className={`w-3.5 h-0.5 ${l.color}`} />
+              <span className="text-[10.5px] font-medium">{l.label}</span>
             </div>
           ))}
-          <div className="flex items-center gap-2 ml-2 border-l border-slate-200 pl-4">
-            <div className="w-6 h-3 bg-blue-100 flex flex-col justify-center items-center rounded-sm border border-blue-200">
-               <div className="w-6 h-0.5 bg-blue-500"></div>
+          <div className="flex items-center gap-1.5 ml-1 border-l border-slate-200 pl-3">
+            <div className="w-5 h-2.5 bg-blue-100 flex flex-col justify-center items-center rounded-sm border border-blue-200">
+               <div className="w-5 h-0.5 bg-blue-500"></div>
             </div>
-            <span className="text-xs font-medium text-slate-700">保护区</span>
+            <span className="text-[10.5px] font-medium text-slate-700">保护区</span>
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-6">
-        <span className="text-xs font-bold tracking-wider text-slate-500 w-12 text-right shrink-0">预警区域</span>
-        <div className="flex items-center gap-5">
+      <div className="flex items-center gap-4">
+        <span className="text-[10.5px] font-bold tracking-wider text-slate-500 w-12 text-right shrink-0">预警区域</span>
+        <div className="flex items-center gap-3.5">
           {warnings.map((w) => (
-            <div key={w.label} className="flex items-center gap-2">
-              <div className={`w-5 h-3 border skew-x-[-20deg] ${w.border} ${w.bg}`} />
-              <span className="text-xs font-medium">{w.label}</span>
+            <div key={w.label} className="flex items-center gap-1.5">
+              <div className={`w-4 h-2.5 border skew-x-[-20deg] ${w.border} ${w.bg}`} />
+              <span className="text-[10.5px] font-medium">{w.label}</span>
             </div>
           ))}
         </div>

@@ -11,76 +11,107 @@ import BottomPanel from './components/BottomPanel';
 import RegionSelector from './components/RegionSelector';
 import Map3D from './components/Map3D';
 import WeatherLegend from './components/WeatherLegend';
+import DataLayersPanel from './components/DataLayersPanel';
 import OperationCommandLeft from './components/OperationCommandLeft';
 import OperationCommandRight from './components/OperationCommandRight';
 import ScrollingMessages from './components/ScrollingMessages';
 import MapPopup from './components/MapPopup';
-import { WeatherPoint } from './utils/weatherPoints';
+import { WeatherPoint, weatherPoints } from './utils/weatherPoints';
+import EffectEvaluationLeft from './components/EffectEvaluationLeft';
+import EffectEvaluationRight, { EffectEvaluationRightCharts, EffectEvaluationHistoryList, getHistorySiteDetails } from './components/EffectEvaluationRight';
+import EffectEvaluationBottom from './components/EffectEvaluationBottom';
 
 export default function App() {
   const [activeRegion, setActiveRegion] = useState('湖北地块');
   const [activeNav, setActiveNav] = useState('作业指挥'); // default to the newly requested view for easy viewing
   const [selectedPoint, setSelectedPoint] = useState<WeatherPoint | null>(null);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string>('h1');
   
-  // Visual debug logger to capture and display iframe logs/errors
-  const [logs, setLogs] = useState<{ type: 'log' | 'error' | 'warn'; text: string; time: string }[]>([]);
-  const [showDebug, setShowDebug] = useState(false);
+  // Case Study Mode playback states
+  const [isCaseMode, setIsCaseMode] = useState(false);
+  const [playbackMinutes, setPlaybackMinutes] = useState(90);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
+  // Normal / Real-time Mode states
+  const [normalMinutes, setNormalMinutes] = useState(1080); // defaults to 18:00 (18 * 60 = 1080)
+  const [normalIsPlaying, setNormalIsPlaying] = useState(false);
+
+  // Sync map playback times with the selected history site's operation time when evaluating
   useEffect(() => {
-    const originalLog = console.log;
-    const originalError = console.error;
-    const originalWarn = console.warn;
-
-    const addLog = (type: 'log' | 'error' | 'warn', ...args: any[]) => {
-      const text = args.map(arg => {
-        if (typeof arg === 'object') {
-          try {
-            return JSON.stringify(arg);
-          } catch (e) {
-            return String(arg);
-          }
+    if (activeNav === '效果评估') {
+      const siteDetails = getHistorySiteDetails(selectedHistoryId, isCaseMode);
+      if (siteDetails) {
+        const [h, m] = siteDetails.time.split(':').map(Number);
+        const siteMinutes = h * 60 + m;
+        if (isCaseMode) {
+          const pm = siteMinutes - 900;
+          setPlaybackMinutes(pm);
+        } else {
+          setNormalMinutes(siteMinutes);
         }
-        return String(arg);
-      }).join(' ');
-      
-      const time = new Date().toLocaleTimeString();
-      setLogs(prev => [...prev.slice(-99), { type, text, time }]);
-    };
+      }
+    }
+  }, [selectedHistoryId, isCaseMode, activeNav]);
 
-    console.log = (...args) => {
-      originalLog(...args);
-      addLog('log', ...args);
-    };
-    console.error = (...args) => {
-      originalError(...args);
-      addLog('error', ...args);
-    };
-    console.warn = (...args) => {
-      originalWarn(...args);
-      addLog('warn', ...args);
-    };
+  // Playback timer ticker for Case Study Mode
+  useEffect(() => {
+    if (!isCaseMode || !isPlaying) return;
+    const interval = setInterval(() => {
+      setPlaybackMinutes((prev) => {
+        if (prev >= 120) {
+          setIsPlaying(false);
+          return 120;
+        }
+        return prev + 1;
+      });
+    }, 1000 / playbackSpeed);
+    return () => clearInterval(interval);
+  }, [isCaseMode, isPlaying, playbackSpeed]);
 
-    const handleWindowError = (event: ErrorEvent) => {
-      addLog('error', `[Unhandled Error] ${event.message} at ${event.filename}:${event.lineno}`);
-    };
+  // Playback timer ticker for Normal/Real-time Mode
+  useEffect(() => {
+    if (isCaseMode || !normalIsPlaying) return;
+    const interval = setInterval(() => {
+      setNormalMinutes((prev) => (prev + 1 >= 1110 ? 1050 : prev + 1)); // loops inside 1-hour window [1050, 1110]
+    }, 1000 / playbackSpeed);
+    return () => clearInterval(interval);
+  }, [isCaseMode, normalIsPlaying, playbackSpeed]);
 
-    window.addEventListener('error', handleWindowError);
+  // Handle switching between Real-time (实况) and Case Study (个例) modes
+  const handleModeChange = (caseMode: boolean) => {
+    setIsCaseMode(caseMode);
+    setSelectedHistoryId(caseMode ? 'c1' : 'h1');
+    if (caseMode) {
+      setNormalIsPlaying(false);
+      setPlaybackMinutes(90);
+      setIsPlaying(false); // DO NOT autoplay when entering Case Study mode
+    } else {
+      setIsPlaying(false);
+      setNormalIsPlaying(false);
+    }
+  };
 
-    return () => {
-      console.log = originalLog;
-      console.error = originalError;
-      console.warn = originalWarn;
-      window.removeEventListener('error', handleWindowError);
-    };
-  }, []);
+
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-200 font-sans text-slate-800">
-      <Map3D activeRegion={activeRegion} onPointClick={setSelectedPoint} />
-      <Header activeNav={activeNav} setActiveNav={setActiveNav} />
+    <div className="relative w-screen h-screen overflow-hidden bg-slate-100 font-sans text-slate-800">
+      {activeNav !== '效果评估' && (
+        <Map3D activeRegion={activeRegion} onPointClick={setSelectedPoint} isCaseMode={isCaseMode} playbackMinutes={playbackMinutes} normalMinutes={normalMinutes} activeNav={activeNav} />
+      )}
+      <Header 
+        activeNav={activeNav} 
+        setActiveNav={setActiveNav} 
+        isCaseMode={isCaseMode}
+        onModeChange={handleModeChange}
+        playbackMinutes={playbackMinutes}
+        normalMinutes={normalMinutes}
+      />
       
-      <RegionSelector activeRegion={activeRegion} setActiveRegion={setActiveRegion} />
-      {activeNav === '作业指挥' && <ScrollingMessages />}
+      {activeNav !== '效果评估' && (
+        <RegionSelector activeRegion={activeRegion} setActiveRegion={setActiveRegion} />
+      )}
+      {activeNav === '作业指挥' && <ScrollingMessages isCaseMode={isCaseMode} playbackMinutes={playbackMinutes} />}
       
       {activeNav === '监测预警' && (
         <>
@@ -91,53 +122,108 @@ export default function App() {
 
       {activeNav === '作业指挥' && (
         <>
-          <OperationCommandLeft />
-          <OperationCommandRight />
+          <OperationCommandLeft 
+            isCaseMode={isCaseMode} 
+            playbackMinutes={playbackMinutes} 
+          />
+          <OperationCommandRight isCaseMode={isCaseMode} playbackMinutes={playbackMinutes} />
           {selectedPoint && <MapPopup point={selectedPoint} onClose={() => setSelectedPoint(null)} />}
         </>
       )}
 
-      <BottomPanel />
-      <WeatherLegend />
-
-      {/* Floating Debug Toggle Button */}
-      <button 
-        onClick={() => setShowDebug(!showDebug)}
-        className="absolute bottom-4 left-4 z-50 bg-slate-900/90 text-white text-xs font-mono px-2.5 py-1 rounded shadow-md border border-slate-700/50 hover:bg-slate-800 transition-colors flex items-center gap-1.5"
-      >
-        <span className={`w-1.5 h-1.5 rounded-full ${logs.some(l => l.type === 'error') ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
-        调试日志 ({logs.length})
-      </button>
-
-      {/* Collapsible Debug Panel */}
-      {showDebug && (
-        <div className="absolute bottom-12 left-4 z-50 w-[420px] h-[250px] bg-slate-950/95 border border-slate-800 rounded-lg shadow-xl font-mono text-xs flex flex-col overflow-hidden">
-          <div className="bg-slate-900 px-3 py-1.5 flex justify-between items-center border-b border-slate-800">
-            <span className="text-slate-300 font-bold">系统控制台输出</span>
-            <button 
-              onClick={() => setLogs([])}
-              className="text-slate-500 hover:text-slate-300 transition-colors"
-            >
-              清空
-            </button>
+      {activeNav === '效果评估' && (
+        <div className="absolute top-16 left-0 right-0 bottom-0 bg-[#f1f5f9] flex p-3 gap-3 overflow-hidden select-none z-30 animate-fade-in">
+          {/* Column 1: Left Panel */}
+          <div className="w-[360px] shrink-0 flex flex-col gap-3 h-full">
+            <EffectEvaluationLeft activeRegion={activeRegion} isCaseMode={isCaseMode} />
           </div>
-          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-1 text-[11px]">
-            {logs.length === 0 ? (
-              <span className="text-slate-600">暂无任何日志输出...</span>
-            ) : (
-              logs.map((log, index) => (
-                <div key={index} className={`flex gap-1.5 border-b border-slate-900/50 pb-0.5 last:border-0 ${
-                  log.type === 'error' ? 'text-red-400 bg-red-950/20' : 
-                  log.type === 'warn' ? 'text-yellow-400' : 'text-slate-300'
-                }`}>
-                  <span className="text-slate-600 shrink-0">[{log.time}]</span>
-                  <span className="break-all whitespace-pre-wrap">{log.text}</span>
+
+          {/* Center Area: Map + Right Charts + Bottom Matrix */}
+          <div className="flex-1 flex flex-col gap-3 min-h-0 min-w-0">
+            {/* Top part: Map & Center-Right Charts */}
+            <div className="flex-1 flex gap-3 min-h-0 min-w-0">
+              {/* Map Box */}
+              <div className="flex-1 bg-white border border-slate-200/50 rounded-xl flex flex-col shadow-sm relative min-w-0 overflow-hidden">
+                <div className="flex-1 relative overflow-hidden bg-slate-50">
+                  <Map3D 
+                    activeRegion={activeRegion} 
+                    onPointClick={setSelectedPoint} 
+                    isCaseMode={isCaseMode} 
+                    playbackMinutes={playbackMinutes} 
+                    normalMinutes={normalMinutes}
+                    activeNav={activeNav} 
+                    selectedHistoryId={selectedHistoryId}
+                  />
+                  <BottomPanel 
+                    isCaseMode={isCaseMode}
+                    playbackMinutes={playbackMinutes}
+                    setPlaybackMinutes={setPlaybackMinutes}
+                    isPlaying={isPlaying}
+                    setIsPlaying={setIsPlaying}
+                    playbackSpeed={playbackSpeed}
+                    setPlaybackSpeed={setPlaybackSpeed}
+                    normalMinutes={normalMinutes}
+                    setNormalMinutes={setNormalMinutes}
+                    normalIsPlaying={normalIsPlaying}
+                    setNormalIsPlaying={setNormalIsPlaying}
+                    variant="inline"
+                    selectedHistoryId={selectedHistoryId}
+                  />
                 </div>
-              ))
-            )}
+              </div>
+
+              {/* Center-Right Charts */}
+              <div className="w-[380px] shrink-0 flex flex-col gap-0 h-full">
+                <EffectEvaluationRightCharts selectedHistoryId={selectedHistoryId} isCaseMode={isCaseMode} />
+              </div>
+            </div>
+
+            {/* Bottom matrix */}
+            <div className="h-[175px] shrink-0 bg-white border border-slate-200/50 rounded-xl p-3 shadow-sm flex flex-col justify-center overflow-x-auto scrollbar-none">
+              <EffectEvaluationBottom
+                isCaseMode={isCaseMode}
+                playbackMinutes={playbackMinutes}
+                setPlaybackMinutes={setPlaybackMinutes}
+                isPlaying={isPlaying}
+                setIsPlaying={setIsPlaying}
+                selectedHistoryId={selectedHistoryId}
+              />
+            </div>
+          </div>
+
+          {/* Column 4: History list */}
+          <div className="w-[280px] shrink-0 bg-white border border-slate-200/50 rounded-xl p-3.5 flex flex-col shadow-sm overflow-hidden h-full">
+            <EffectEvaluationHistoryList selectedHistoryId={selectedHistoryId} setSelectedHistoryId={setSelectedHistoryId} isCaseMode={isCaseMode} />
           </div>
         </div>
       )}
+
+      {activeNav !== '效果评估' && (
+        <BottomPanel 
+          isCaseMode={isCaseMode}
+          playbackMinutes={playbackMinutes}
+          setPlaybackMinutes={setPlaybackMinutes}
+          isPlaying={isPlaying}
+          setIsPlaying={setIsPlaying}
+          playbackSpeed={playbackSpeed}
+          setPlaybackSpeed={setPlaybackSpeed}
+          normalMinutes={normalMinutes}
+          setNormalMinutes={setNormalMinutes}
+          normalIsPlaying={normalIsPlaying}
+          setNormalIsPlaying={setNormalIsPlaying}
+        />
+      )}
+      {activeNav !== '效果评估' && <WeatherLegend activeNav={activeNav} />}
+      {activeNav === '监测预警' && (
+        <DataLayersPanel 
+          activeNav={activeNav}
+          isCaseMode={isCaseMode}
+          playbackMinutes={playbackMinutes}
+          normalMinutes={normalMinutes}
+        />
+      )}
+
+
     </div>
   );
 }
