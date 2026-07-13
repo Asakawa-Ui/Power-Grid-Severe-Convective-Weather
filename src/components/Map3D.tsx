@@ -216,8 +216,15 @@ export default function Map3D({
           try {
             const response = await fetch(url);
             if (response.ok) {
-              res = response;
-              break;
+              try {
+                // Verify that the response is actually valid JSON (handles SPA fallback HTML elegantly)
+                const clone = response.clone();
+                await clone.json();
+                res = response;
+                break;
+              } catch (parseErr) {
+                // Not valid JSON, continue to next URL
+              }
             }
           } catch (err) {
             // continue trying
