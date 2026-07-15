@@ -18,11 +18,24 @@ export const caseHistoryData = [
   { id: 'c3', type: '火箭', location: '白沙作业点', date: '2026-06-18 15:18', time: '15:19', ammo: '4发', angle: '45°', azimuth: '210°', status: '合理' }
 ];
 
+export const nanjingHistoryData = [
+  { id: 'n1', type: '火箭', location: '三道沟火箭点', date: '2026-07-02 15:30', time: '15:42', ammo: '8发', angle: '45°', azimuth: '180°', status: '合理' },
+  { id: 'n2', type: '高炮', location: '太平庄高炮站', date: '2026-07-02 15:20', time: '15:35', ammo: '40发', angle: '52°', azimuth: '120°', status: '合理' },
+  { id: 'n3', type: '高炮', location: '大杨树作业点', date: '2026-07-02 15:10', time: '15:25', ammo: '35发', angle: '48°', azimuth: '150°', status: '合理' }
+];
+
 export const historyData = liveHistoryData;
 
-export function getHistorySiteDetails(id: string, isCaseMode?: boolean) {
-  const isCase = isCaseMode ?? id.startsWith('c');
-  const data = isCase ? caseHistoryData : liveHistoryData;
+export function getHistorySiteDetails(id: string, isCaseMode?: boolean, activeCaseId?: string) {
+  const isCase = isCaseMode ?? (id.startsWith('c') || id.startsWith('n'));
+  let data = liveHistoryData;
+  if (isCase) {
+    if (activeCaseId === '2026-07-02' || id.startsWith('n')) {
+      data = nanjingHistoryData;
+    } else {
+      data = caseHistoryData;
+    }
+  }
   const site = data.find(h => h.id === id) || data[0];
   let coord: [number, number] = [114.87528, 30.07444]; // default 大冶金湖
   if (site.location === '姜祥村作业点') coord = [115.07944, 30.02250];
@@ -32,6 +45,9 @@ export function getHistorySiteDetails(id: string, isCaseMode?: boolean) {
   else if (site.location === '刘仁八作业点') coord = [114.84639, 29.94417];
   else if (site.location === '金牛镇作业点') coord = [114.78, 30.01];
   else if (site.location === '陈贵镇作业点') coord = [114.82, 30.12];
+  else if (site.location === '太平庄高炮站') coord = [121.67, 30.7543];
+  else if (site.location === '大杨树作业点') coord = [121.4669, 34.3844];
+  else if (site.location === '三道沟火箭点') coord = [118.6884, 32.1628];
   
   return {
     ...site,
@@ -47,6 +63,9 @@ export function getAdministrativeAddress(location: string) {
   if (location === '刘仁八作业点') return '黄石市大冶市刘仁八镇刘仁八村';
   if (location === '金牛镇作业点') return '黄石市大冶市金牛镇金牛街村';
   if (location === '陈贵镇作业点') return '黄石市大冶市陈贵镇陈贵街村';
+  if (location === '太平庄高炮站') return '南京市雨花台区西善桥街道太平庄';
+  if (location === '大杨树作业点') return '南京市江宁区谷里街道大杨树';
+  if (location === '三道沟火箭点') return '南京市浦口区星甸街道三道沟';
   return `黄石市大冶市${location}`;
 }
 
@@ -613,18 +632,176 @@ export function EffectEvaluationRightCharts({ selectedHistoryId = 'h1', isCaseMo
   );
 }
 
+export function RadarReflectivityStatChange({ selectedHistoryId = 'h1', isCaseMode = false }: { selectedHistoryId?: string; isCaseMode?: boolean }) {
+  const siteDetails = getHistorySiteDetails(selectedHistoryId, isCaseMode);
+  const startTimeStr = siteDetails.date.split(' ')[1] || '17:00';
+  const dynamicTimes = getDynamicTimeRange(startTimeStr);
+
+  const dynamicDbzData = dbzHistoryData.map((item, index) => {
+    const seed = selectedHistoryId.charCodeAt(0) + index;
+    const offset30_40 = (seed % 5) - 2;
+    const offset40_50 = (seed % 4) - 2;
+    return {
+      ...item,
+      time: dynamicTimes[index],
+      dbz_30_40: Math.max(5, item.dbz_30_40 + offset30_40),
+      dbz_40_50: Math.max(2, item.dbz_40_50 + offset40_50),
+      max_ref: Math.max(10, item.max_ref + (seed % 6) - 3)
+    };
+  });
+
+  return (
+    <div className="bg-white border border-slate-200/50 shadow-sm rounded-xl p-3 flex flex-col gap-1 h-full min-h-0">
+      <div className="flex items-center justify-between shrink-0">
+        <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+          <span className="w-1.5 h-3 bg-blue-600 rounded-full" />
+          爆炸点区域雷达反射率统计变化
+        </h4>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-semibold text-slate-500">雷达变化率:</span>
+          <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded">
+            -50%
+          </span>
+        </div>
+      </div>
+
+      {/* Trend line chart with custom side legend */}
+      <div className="flex-1 min-h-0 w-full mt-1.5 flex relative">
+        {/* Chart area container */}
+        <div className="flex-1 h-full relative">
+          {/* Top X/Y Axis Labels placed perfectly above the axes ticks with a clean gap */}
+          <div className="absolute left-[7px] top-[0px] w-[28px] text-center text-[8px] text-slate-400 font-medium font-sans select-none pointer-events-none">km²</div>
+          <div className="absolute right-[7px] top-[0px] w-[28px] text-center text-[8px] text-slate-400 font-medium font-sans select-none pointer-events-none">dBZ</div>
+
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={dynamicDbzData} margin={{ top: 16, right: 8, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis 
+                dataKey="time" 
+                ticks={[dynamicTimes[1], dynamicTimes[3], dynamicTimes[5], dynamicTimes[7]]}
+                tick={{ fontSize: 9, fill: '#475569' }} 
+                tickLine={false} 
+                axisLine={false} 
+                dy={2}
+                height={18}
+              />
+              <YAxis 
+                yAxisId="left"
+                domain={[0, 60]}
+                ticks={[0, 15, 30, 45, 60]}
+                tick={{ fontSize: 9, fill: '#475569' }} 
+                tickLine={false} 
+                axisLine={false}
+                width={22}
+                tickMargin={2}
+              />
+              <YAxis 
+                yAxisId="right"
+                orientation="right"
+                domain={[0, 60]}
+                ticks={[0, 15, 30, 45, 60]}
+                tick={{ fontSize: 9, fill: '#475569' }} 
+                tickLine={false} 
+                axisLine={false}
+                width={22}
+                tickMargin={2}
+              />
+              <Tooltip 
+                contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '8px', fontSize: '9px', color: '#fff' }}
+              />
+              <ReferenceArea 
+                yAxisId="left"
+                x1={dynamicTimes[2]} 
+                x2={dynamicTimes[4]} 
+                {...({ fill: '#22c55e', fillOpacity: 0.06 } as any)}
+              />
+              <ReferenceLine 
+                yAxisId="left"
+                x={dynamicTimes[3]} 
+                stroke="#22c55e" 
+                strokeDasharray="3 3" 
+                strokeWidth={1.2}
+                label={{ 
+                  value: '作业时刻', 
+                  fill: '#15803d', 
+                  fontSize: 8, 
+                  position: 'insideTopLeft',
+                  dy: 4,
+                  dx: 4,
+                  fontWeight: 'bold'
+                }} 
+              />
+              <Line yAxisId="left" type="monotone" dataKey="dbz_30_40" stroke="#3b82f6" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="30~40dBZ" />
+              <Line yAxisId="left" type="monotone" dataKey="dbz_40_50" stroke="#f97316" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="40~50dBZ" />
+              <Line yAxisId="left" type="monotone" dataKey="dbz_50_55" stroke="#22c55e" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="50~55dBZ" />
+              <Line yAxisId="left" type="monotone" dataKey="dbz_above_55" stroke="#ef4444" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name=">55dBZ" />
+              <Line yAxisId="right" type="monotone" dataKey="max_ref" stroke="#a855f7" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="MAX_REF" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Custom Side/Overlay Legend styled EXACTLY like the user picture with straight line indicators */}
+        <div className="w-[82px] h-full flex flex-col justify-center gap-1 border-l border-slate-100 pl-2 select-none">
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-2 flex items-center justify-center relative">
+              <div className="w-full h-[1.5px] bg-[#3b82f6] rounded-full" />
+            </div>
+            <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">30~40dBZ</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-2 flex items-center justify-center relative">
+              <div className="w-full h-[1.5px] bg-[#f97316] rounded-full" />
+            </div>
+            <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">40~50dBZ</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-2 flex items-center justify-center relative">
+              <div className="w-full h-[1.5px] bg-[#22c55e] rounded-full" />
+            </div>
+            <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">50~55dBZ</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-2 flex items-center justify-center relative">
+              <div className="w-full h-[1.5px] bg-[#ef4444] rounded-full" />
+            </div>
+            <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">&gt;55dBZ</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-2 flex items-center justify-center relative">
+              <div className="w-full h-[1.5px] bg-[#a855f7] rounded-full" />
+            </div>
+            <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">MAX_REF</span>
+          </div>
+
+          <div className="flex items-center gap-1 mt-0.5">
+            <div className="w-4 h-2 bg-[#22c55e]/20 border border-[#22c55e]/30 rounded-sm" />
+            <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">作业时刻</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface HistoryListProps {
   selectedHistoryId: string;
   setSelectedHistoryId: (id: string) => void;
   isCaseMode?: boolean;
+  activeCaseId?: string;
 }
 
-export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHistoryId, isCaseMode = false }: HistoryListProps) {
+export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHistoryId, isCaseMode = false, activeCaseId = '2026-06-18' }: HistoryListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(4);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const activeHistoryData = isCaseMode ? caseHistoryData : liveHistoryData;
+  const activeHistoryData = isCaseMode 
+    ? (activeCaseId === '2026-07-02' ? nanjingHistoryData : caseHistoryData)
+    : liveHistoryData;
 
   useEffect(() => {
     const updateItemsPerPage = () => {

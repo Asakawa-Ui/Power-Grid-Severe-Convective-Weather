@@ -32,9 +32,10 @@ const CASE_MESSAGES = [
 interface ScrollingMessagesProps {
   isCaseMode?: boolean;
   playbackMinutes?: number;
+  normalMinutes?: number;
 }
 
-export default function ScrollingMessages({ isCaseMode = false, playbackMinutes = 0 }: ScrollingMessagesProps) {
+export default function ScrollingMessages({ isCaseMode = false, playbackMinutes = 0, normalMinutes = 1080 }: ScrollingMessagesProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
@@ -48,6 +49,12 @@ export default function ScrollingMessages({ isCaseMode = false, playbackMinutes 
     return () => clearInterval(timer);
   }, [isCaseMode]);
 
+  const formatTime = (minutes: number) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
   let activeMessage = '';
   if (isCaseMode) {
     const unlocked = CASE_MESSAGES.filter(m => m.minutes <= playbackMinutes);
@@ -57,7 +64,8 @@ export default function ScrollingMessages({ isCaseMode = false, playbackMinutes 
       activeMessage = "暂无最新作业动态";
     }
   } else {
-    activeMessage = MOCK_MESSAGES[currentIndex];
+    const timeStr = formatTime(normalMinutes);
+    activeMessage = `${timeStr}, 姜祥村作业点已就绪`;
   }
 
   useEffect(() => {

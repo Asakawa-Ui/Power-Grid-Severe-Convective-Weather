@@ -18,7 +18,7 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
       commands.push({ type: '火箭', name: '刘仁八作业点', time: '2026-06-18 15:23', actionTime: '15:28', count: '4发', angle: '56°', azimuth: '215°', status: '已接收' });
     }
     if (playbackMinutes >= 133) {
-      commands.push({ type: '火箭', name: '大冶金湖作业点', time: '2026-06-18 17:13', actionTime: '17:18', count: '4发', angle: '--', azimuth: '--', status: '已下发' });
+      commands.push({ type: '火箭', name: '大冶金湖作业点', time: '2026-06-18 17:13', actionTime: '17:18', count: '4发', angle: '--', azimuth: '--', status: '已接收' });
     }
 
     commands.reverse(); // Newest first
@@ -52,17 +52,20 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
     }
   } else {
     commands = [
-      { type: '火箭', name: '姜祥村作业点', time: '2026-07-07 18:30', actionTime: '18:45', count: '8发', angle: '45°', azimuth: '225°', status: '已下发' },
-      { type: '火箭', name: '铁山南作业点', time: '2026-07-07 18:25', actionTime: '18:38', count: '6发', angle: '42°', azimuth: '210°', status: '已接收' },
-      { type: '火箭', name: '白沙作业点', time: '2026-07-07 18:15', actionTime: '18:28', count: '12发', angle: '55°', azimuth: '160°', status: '已接收' },
-      { type: '火箭', name: '刘仁八作业点', time: '2026-07-07 18:10', actionTime: '18:22', count: '8发', angle: '48°', azimuth: '190°', status: '接收失败' },
+      { type: '高炮', name: '姜祥村作业点', time: '2026-07-07 18:30', actionTime: '18:45', count: '40发', angle: '45°', azimuth: '225°', status: '待下发' },
+      { type: '高炮', name: '铁山南作业点', time: '2026-07-07 18:25', actionTime: '18:38', count: '40发', angle: '42°', azimuth: '210°', status: '待下发' },
+      { type: '高炮', name: '沿湖生态园作业点', time: '2026-07-07 18:20', actionTime: '18:32', count: '40发', angle: '40°', azimuth: '205°', status: '待下发' },
+      { type: '火箭', name: '大冶金湖作业点', time: '2026-07-07 18:15', actionTime: '18:28', count: '8发', angle: '55°', azimuth: '160°', status: '待下发' },
     ];
 
     dynamics = [
-      { type: '火箭', name: '姜祥村作业点', id: '420222001', status: '作业', time: '2026-07-07 18:45' },
-      { type: '火箭', name: '大冶金湖作业点', id: '420281002', status: '完成', time: '2026-07-07 18:30' },
-      { type: '火箭', name: '太子作业点', id: '420222003', status: '就绪', time: '2026-07-07 18:20' },
-      { type: '火箭', name: '白沙作业点', id: '422324004', status: '完成', time: '2026-07-07 18:28' },
+      { type: '高炮', name: '姜祥村作业点', id: '420222001', status: '就绪', time: '2026-07-07 18:45' },
+      { type: '高炮', name: '铁山南作业点', id: '420222002', status: '就绪', time: '2026-07-07 18:38' },
+      { type: '高炮', name: '沿湖生态园作业点', id: '420281005', status: '就绪', time: '2026-07-07 18:32' },
+      { type: '火箭', name: '大冶金湖作业点', id: '420281002', status: '就绪', time: '2026-07-07 18:30' },
+      { type: '火箭', name: '白沙作业点', id: '422324004', status: '就绪', time: '2026-07-07 18:28' },
+      { type: '高炮', name: '太子作业点', id: '420222003', status: '就绪', time: '2026-07-07 18:20' },
+      { type: '火箭', name: '刘仁八作业点', id: '420281004', status: '就绪', time: '2026-07-07 18:15' },
     ];
   }
 
@@ -124,6 +127,11 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
                       {cmd.status === '已下发' && (
                         <span className="px-1.5 py-0.5 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100/60 rounded shrink-0 select-none">
                           已下发
+                        </span>
+                      )}
+                      {cmd.status === '待下发' && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100/60 rounded shrink-0 select-none animate-pulse">
+                          待下发
                         </span>
                       )}
                     </div>

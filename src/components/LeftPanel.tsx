@@ -231,16 +231,23 @@ const hierarchicalData: Record<string, SubCategory[]> = {
   ]
 };
 
+export function isProductOverlayable(subCatName: string, productName: string): boolean {
+  return subCatName === '城市气象' || 
+         subCatName === '国家气象标准站小时' || 
+         productName === '雷电30min预警';
+}
+
 // Module-level cache to persist selection state across component unmounts/remounts (e.g., when switching top navigation tabs)
 let cachedActiveMain = 'radar';
 let cachedExpandedSubCats: string[] = [];
+export let cachedSelectedProductKeys: string[] = [];
 export let cachedSelectedProductKey: string | null = null;
 let cachedIsPopupOpen = true;
 
 export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelProps) {
   const [activeMain, setActiveMainState] = useState(cachedActiveMain);
   const [expandedSubCats, setExpandedSubCatsState] = useState<string[]>(cachedExpandedSubCats);
-  const [selectedProductKey, setSelectedProductKeyState] = useState<string | null>(cachedSelectedProductKey);
+  const [selectedProductKeys, setSelectedProductKeysState] = useState<string[]>(cachedSelectedProductKeys);
   const [isPopupOpen, setIsPopupOpenState] = useState(cachedIsPopupOpen);
 
   // Layout states for window collision avoidance
@@ -270,9 +277,10 @@ export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelPr
     }
   };
 
-  const setSelectedProductKey = (val: string | null) => {
-    cachedSelectedProductKey = val;
-    setSelectedProductKeyState(val);
+  const setSelectedProductKeys = (val: string[]) => {
+    cachedSelectedProductKeys = val;
+    cachedSelectedProductKey = val[0] || null;
+    setSelectedProductKeysState(val);
     window.dispatchEvent(new CustomEvent('product-select-changed', { detail: val }));
   };
 
@@ -292,7 +300,7 @@ export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelPr
       
       const targetSubCats = hierarchicalData[catId] || [];
       const matchingSubCat = targetSubCats.find(sc => 
-        selectedProductKey && sc.products.some(p => `${catId}|${sc.name}|${p.name}` === selectedProductKey)
+        selectedProductKeys.some(k => sc.products.some(p => `${catId}|${sc.name}|${p.name}` === k))
       );
       if (matchingSubCat) {
         setExpandedSubCats([matchingSubCat.name]);
@@ -318,7 +326,7 @@ export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelPr
       // Expand it
       // Get the sub-category object containing the selected sub-product (if any)
       const activeSubCatObj = currentSubCatList.find(sc => 
-        selectedProductKey && sc.products.some(p => `${activeMain}|${sc.name}|${p.name}` === selectedProductKey)
+        selectedProductKeys.some(k => sc.products.some(p => `${activeMain}|${sc.name}|${p.name}` === k))
       );
       
       // Keep only the sub-category that has the currently selected product, collapse the rest
@@ -332,34 +340,52 @@ export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelPr
 
   const handleProductSelect = (productName: string, subCatName: string) => {
     const key = `${activeMain}|${subCatName}|${productName}`;
-    if (selectedProductKey === key) {
+    const overlayable = isProductOverlayable(subCatName, productName);
+
+    let nextKeys: string[] = [...selectedProductKeys];
+
+    if (nextKeys.includes(key)) {
       // Toggle off / deselect
-      setSelectedProductKey(null);
+      nextKeys = nextKeys.filter(k => k !== key);
     } else {
       // Select new product
-      setSelectedProductKey(key);
-      // Keep its parent sub-category expanded
-      setExpandedSubCats([subCatName]);
+      if (overlayable) {
+        // Overlayable can be added alongside anything else
+        nextKeys.push(key);
+      } else {
+        // Non-overlayable replaces other non-overlayable products
+        nextKeys = nextKeys.filter(k => {
+          const [, s, p] = k.split('|');
+          return isProductOverlayable(s, p);
+        });
+        nextKeys.push(key);
+      }
     }
+
+    setSelectedProductKeys(nextKeys);
+    // Keep its parent sub-category expanded
+    setExpandedSubCats([subCatName]);
   };
 
   const activeIndex = mainCategories.findIndex(cat => cat.id === activeMain);
 
   // Find which main category contains the currently selected product
-  const activeProductMainCatId = selectedProductKey ? selectedProductKey.split('|')[0] : null;
+  const activeProductMainCatId = selectedProductKeys.length > 0 ? selectedProductKeys[0].split('|')[0] : null;
 
   // Sync state when product-select-changed event is fired externally (e.g. from data layers panel deletion)
   useEffect(() => {
     const handleProductChange = (e: Event) => {
-      const customEvent = e as CustomEvent<string | null>;
-      if (customEvent.detail !== selectedProductKey) {
-        cachedSelectedProductKey = customEvent.detail;
-        setSelectedProductKeyState(customEvent.detail);
+      const customEvent = e as CustomEvent<string[] | null>;
+      const keys = customEvent.detail || [];
+      if (JSON.stringify(keys) !== JSON.stringify(selectedProductKeys)) {
+        cachedSelectedProductKeys = keys;
+        cachedSelectedProductKey = keys[0] || null;
+        setSelectedProductKeysState(keys);
       }
     };
     window.addEventListener('product-select-changed', handleProductChange);
     return () => window.removeEventListener('product-select-changed', handleProductChange);
-  }, [selectedProductKey]);
+  }, [selectedProductKeys]);
 
   // 1. Listen to window resize to get the dynamic viewport height
   useEffect(() => {
@@ -388,28 +414,36 @@ export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelPr
 
   // 3. Dynamic adjustment of popup top and max-height to avoid window collision/overflow
   useEffect(() => {
-    if (!popupRef.current || !isPopupOpen) return;
+    if (!popupRef.current || !panelRef.current || !isPopupOpen) return;
 
-    // LeftPanel is absolutely positioned at top-[76px] (76px).
-    // Let's set a safety margin at the bottom of the viewport (24px).
-    const maxBottom = windowHeight - 76 - 24;
-    const targetTop = activeIndex * 88; // Default alignment top matching button offset (80px height + 8px gap)
+    const adjustPopup = () => {
+      if (!popupRef.current || !panelRef.current) return;
+      
+      const rect = panelRef.current.getBoundingClientRect();
+      const parentTop = rect.top;
+      const maxBottom = windowHeight - 24; // 24px safety margin from viewport bottom
+      const targetTop = activeIndex * 88; // 80px height + 8px gap
 
-    // Measure actual scrollHeight or offsetHeight of the popup
-    const height = popupRef.current.scrollHeight || popupRef.current.offsetHeight || 300;
+      const height = popupRef.current.scrollHeight || popupRef.current.offsetHeight || 300;
 
-    if (targetTop + height > maxBottom) {
-      // Shift upwards so the bottom of the popup aligns exactly with maxBottom
-      const adjustedTop = Math.max(0, maxBottom - height);
-      setPopupTop(adjustedTop);
-    } else {
-      setPopupTop(targetTop);
-    }
+      let finalTop = targetTop;
+      if (parentTop + targetTop + height > maxBottom) {
+        finalTop = Math.max(0, maxBottom - parentTop - height);
+      }
+      setPopupTop(finalTop);
 
-    // Set high-precision max-height to ensure it is fully within bounds and scrollable if needed
-    const calculatedMaxHeight = Math.max(200, windowHeight - 76 - 48);
-    setPopupMaxHeight(calculatedMaxHeight);
-  }, [activeMain, expandedSubCats, windowHeight, activeIndex, isPopupOpen]);
+      // Max height constraint so that parentTop + finalTop + maxHeight <= maxBottom
+      const calculatedMaxHeight = Math.max(200, maxBottom - parentTop - finalTop);
+      setPopupMaxHeight(calculatedMaxHeight);
+    };
+
+    // Run once immediately
+    adjustPopup();
+
+    // Also run on animation frame to capture any pending DOM layouts
+    const handle = requestAnimationFrame(adjustPopup);
+    return () => cancelAnimationFrame(handle);
+  }, [activeMain, expandedSubCats, windowHeight, activeIndex, isPopupOpen, selectedProductKeys]);
 
   return (
     <div className="absolute top-[76px] left-6 z-40 flex flex-col gap-3 w-[304px] pointer-events-none font-sans animate-fade-in">
@@ -419,10 +453,10 @@ export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelPr
       {/* 2 & 3: Main Categories and Pop-up Sub Products Column Row */}
       <div ref={panelRef} className="relative flex gap-2 pointer-events-auto shrink-0 select-none">
         {/* Main Categories Column */}
-        <div className="flex flex-col gap-2 w-24 max-h-[580px] overflow-y-auto scrollbar-none">
+        <div className="flex flex-col gap-2 w-20 max-h-[580px] overflow-y-auto scrollbar-none">
           {mainCategories.map((cat) => {
             const isActive = activeMain === cat.id;
-            const isCurrentlyOverlaidInCat = activeProductMainCatId === cat.id;
+            const isCurrentlyOverlaidInCat = selectedProductKeys.some(k => k.split('|')[0] === cat.id);
             const Icon = cat.icon;
             return (
               <button
@@ -430,21 +464,21 @@ export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelPr
                 id={`main-cat-${cat.id}`}
                 onClick={() => handleMainSelect(cat.id)}
                 className={cn(
-                  "flex flex-col items-center justify-center p-3 h-20 bg-white/95 backdrop-blur shadow-md border-l-4 transition-all duration-200 rounded-r-lg rounded-l-none relative",
+                  "flex flex-col items-center justify-center p-2 h-20 bg-white/95 backdrop-blur shadow-md border-l-4 transition-all duration-200 rounded-r-lg rounded-l-none relative",
                   isActive && isPopupOpen
                     ? "border-blue-500 text-blue-600 bg-slate-50/80" 
                     : "border-transparent text-slate-600 hover:bg-slate-50 hover:text-blue-500"
                 )}
               >
                 {/* Overlay status indicator light on category tab */}
-                {selectedProductKey && isCurrentlyOverlaidInCat && (
+                {selectedProductKeys.length > 0 && isCurrentlyOverlaidInCat && (
                   <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                   </span>
                 )}
                 <Icon className={cn("w-6 h-6 mb-1", isActive && isPopupOpen ? "text-blue-500" : "text-slate-400")} />
-                <span className="text-xs font-bold text-center leading-tight">
+                <span className="text-[10.5px] font-bold text-center leading-tight">
                   {cat.name}
                 </span>
               </button>
@@ -457,7 +491,7 @@ export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelPr
           <div 
             ref={popupRef}
             id="sub-products-popup"
-            className="absolute left-[104px] w-48 bg-white/95 backdrop-blur-sm shadow-lg p-2 rounded-lg border border-slate-100 flex flex-col gap-2 overflow-y-auto scrollbar-none transition-all duration-300 ease-out z-50 animate-fade-in"
+            className="absolute left-[88px] w-48 bg-white/95 backdrop-blur-sm shadow-lg p-2 rounded-lg border border-slate-100 flex flex-col gap-2 overflow-y-auto scrollbar-none transition-all duration-300 ease-out z-50 animate-fade-in"
             style={{ 
               top: `${popupTop}px`,
               maxHeight: `${popupMaxHeight}px`
@@ -466,7 +500,7 @@ export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelPr
             <div className="flex flex-col gap-1.5">
               {currentSubCatList.map((subCat) => {
                 const isSubCatActive = expandedSubCats.includes(subCat.name);
-                const hasSelectedProduct = selectedProductKey && subCat.products.some(p => `${activeMain}|${subCat.name}|${p.name}` === selectedProductKey);
+                const hasSelectedProduct = selectedProductKeys.some(k => subCat.products.some(p => `${activeMain}|${subCat.name}|${p.name}` === k));
                 return (
                   <div key={subCat.name} className="flex flex-col gap-1" id={`subcat-container-${subCat.name}`}>
                     {/* Sub-category Header (Accordion Trigger) */}
@@ -495,7 +529,7 @@ export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelPr
                     {isSubCatActive && (
                       <div className="flex flex-col gap-1 pl-2.5 border-l-2 border-blue-100/60 py-1 transition-all duration-200 animate-fade-in">
                         {subCat.products.map((p) => {
-                          const isProductActive = selectedProductKey === `${activeMain}|${subCat.name}|${p.name}`;
+                          const isProductActive = selectedProductKeys.includes(`${activeMain}|${subCat.name}|${p.name}`);
                           return (
                             <button
                               key={p.name}

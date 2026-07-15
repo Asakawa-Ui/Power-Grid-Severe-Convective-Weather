@@ -131,8 +131,8 @@ export default function BottomPanel({
   })() : 0;
 
   const sliderValue = variant === 'inline' && selectedHistoryId
-    ? (isCaseMode ? (playbackMinutes + 900) : normalMinutes)
-    : (isCaseMode ? playbackMinutes : normalMinutes);
+    ? (isCaseMode ? ((playbackMinutes ?? 0) + 900) : (normalMinutes ?? 1080))
+    : (isCaseMode ? (playbackMinutes ?? 0) : (normalMinutes ?? 1080));
 
   let sliderMin = isCaseMode ? 0 : 960;
   let sliderMax = isCaseMode ? 180 : 1140;

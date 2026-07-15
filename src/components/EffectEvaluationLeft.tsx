@@ -5,18 +5,49 @@ import { MapPin, Calendar, Clock, BarChart3, LineChart } from 'lucide-react';
 interface LeftProps {
   activeRegion: string;
   isCaseMode?: boolean;
+  activeCaseId?: string;
 }
 
-export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false }: LeftProps) {
+export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false, activeCaseId = '2026-06-18' }: LeftProps) {
   const [selectedProvince, setSelectedProvince] = useState<string>('湖北');
   const [selectedCity, setSelectedCity] = useState<string>('全省');
   const [startTime, setStartTime] = useState('2026-07-02 12:00');
   const [endTime, setEndTime] = useState('2026-07-02 21:00');
 
   React.useEffect(() => {
-    setStartTime(isCaseMode ? '2026-06-18 14:00' : '2026-07-02 12:00');
-    setEndTime(isCaseMode ? '2026-06-18 18:00' : '2026-07-02 21:00');
-  }, [isCaseMode]);
+    if (isCaseMode) {
+      if (activeCaseId === '2026-07-02') {
+        setStartTime('2026-07-02 12:00');
+        setEndTime('2026-07-02 21:00');
+      } else {
+        setStartTime('2026-06-18 14:00');
+        setEndTime('2026-06-18 18:00');
+      }
+    } else {
+      setStartTime('2026-07-07 12:00');
+      setEndTime('2026-07-07 21:00');
+    }
+  }, [isCaseMode, activeCaseId]);
+
+  React.useEffect(() => {
+    if (isCaseMode) {
+      if (activeCaseId === '2026-07-02') {
+        setSelectedProvince('江苏');
+        setSelectedCity('南京市');
+      } else {
+        setSelectedProvince('湖北');
+        setSelectedCity('黄石市');
+      }
+    } else {
+      if (activeRegion === '江苏地块') {
+        setSelectedProvince('江苏');
+        setSelectedCity('南京市');
+      } else {
+        setSelectedProvince('湖北');
+        setSelectedCity('黄石市');
+      }
+    }
+  }, [isCaseMode, activeCaseId, activeRegion]);
 
   // Chart data exactly copied/reused from OperationCommandLeft statsData
   const liveChartData = [
@@ -37,13 +68,88 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false 
     { time: '18:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
   ];
 
-  const chartData = isCaseMode ? caseChartData : liveChartData;
+  const nanjingChartData = [
+    { time: '14:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
+    { time: '15:00', rocketOps: 1, rocketAmmo: 8, gunOps: 2, gunAmmo: 75 }, // 三道沟 15:30 (8发), 太平庄 15:20 (40发), 大杨树 15:10 (35发)
+    { time: '16:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
+    { time: '17:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
+    { time: '18:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
+  ];
 
-  const tableData = [
+  const chartData = isCaseMode 
+    ? (activeCaseId === '2026-07-02' ? nanjingChartData : caseChartData) 
+    : liveChartData;
+
+  // Calculate stats based on actual active dataset
+  let totalOps = 0;
+  let successOps = 0;
+  let gunOpsCount = 0;
+  let gunAmmoCount = 0;
+  let rocketOpsCount = 0;
+  let rocketAmmoCount = 0;
+
+  if (!isCaseMode) {
+    liveChartData.forEach(item => {
+      rocketOpsCount += item.rocketOps;
+      rocketAmmoCount += item.rocketAmmo;
+      gunOpsCount += item.gunOps;
+      gunAmmoCount += item.gunAmmo;
+    });
+    totalOps = rocketOpsCount + gunOpsCount;
+    successOps = 18; // 18 successful operations out of 20
+  } else if (activeCaseId === '2026-07-02') {
+    rocketOpsCount = 1;
+    rocketAmmoCount = 8;
+    gunOpsCount = 2;
+    gunAmmoCount = 75;
+    totalOps = rocketOpsCount + gunOpsCount;
+    successOps = totalOps;
+  } else {
+    rocketOpsCount = 3;
+    rocketAmmoCount = 12;
+    gunOpsCount = 0;
+    gunAmmoCount = 0;
+    totalOps = rocketOpsCount + gunOpsCount;
+    successOps = totalOps;
+  }
+
+  let tableData = [
     { name: '大冶金湖', type: '火箭', rational: '合理', status: '有效', radarChange: '-52%' },
     { name: '刘仁八', type: '火箭', rational: '合理', status: '有效', radarChange: '-48%' },
     { name: '白沙', type: '火箭', rational: '合理', status: '有效', radarChange: '-55%' }
   ];
+
+  if (isCaseMode) {
+    if (activeCaseId === '2026-07-02') {
+      tableData = [
+        { name: '三道沟', type: '火箭', rational: '合理', status: '有效', radarChange: '-58%' },
+        { name: '太平庄', type: '高炮', rational: '合理', status: '有效', radarChange: '-50%' },
+        { name: '大杨树', type: '高炮', rational: '合理', status: '有效', radarChange: '-45%' },
+      ];
+    } else {
+      tableData = [
+        { name: '大冶金湖', type: '火箭', rational: '合理', status: '有效', radarChange: '-52%' },
+        { name: '刘仁八', type: '火箭', rational: '合理', status: '有效', radarChange: '-48%' },
+        { name: '白沙', type: '火箭', rational: '合理', status: '有效', radarChange: '-55%' }
+      ];
+    }
+  } else {
+    if (activeRegion === '江苏地块') {
+      tableData = [
+        { name: '三道沟', type: '火箭', rational: '合理', status: '有效', radarChange: '-58%' },
+        { name: '太平庄', type: '高炮', rational: '合理', status: '有效', radarChange: '-50%' },
+        { name: '大杨树', type: '高炮', rational: '合理', status: '有效', radarChange: '-45%' },
+      ];
+    } else {
+      tableData = [
+        { name: '大冶金湖', type: '火箭', rational: '合理', status: '有效', radarChange: '-52%' },
+        { name: '刘仁八', type: '火箭', rational: '合理', status: '有效', radarChange: '-48%' },
+        { name: '姜祥村', type: '高炮', rational: '合理', status: '有效', radarChange: '-40%' },
+        { name: '铁山南', type: '高炮', rational: '合理', status: '有效', radarChange: '-42%' },
+        { name: '沿湖生态园', type: '高炮', rational: '合理', status: '有效', radarChange: '-44%' },
+      ];
+    }
+  }
 
   return (
     <>
@@ -148,8 +254,8 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false 
               火箭
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="text-[10px] text-slate-500 font-medium"><span className="font-bold text-slate-800 font-mono text-xs">{isCaseMode ? '3' : '10'}</span> 次</div>
-              <div className="text-[10px] text-blue-600 font-medium"><span className="font-bold font-mono text-xs">{isCaseMode ? '12' : '80'}</span> 发</div>
+              <div className="text-[10px] text-slate-500 font-medium"><span className="font-bold text-slate-800 font-mono text-xs">{rocketOpsCount}</span> 次</div>
+              <div className="text-[10px] text-blue-600 font-medium"><span className="font-bold font-mono text-xs">{rocketAmmoCount}</span> 发</div>
             </div>
           </div>
           <div className="flex-1 flex items-center justify-between bg-gradient-to-br from-emerald-50/50 to-white rounded-lg p-2 border border-emerald-100 shadow-sm">
@@ -158,8 +264,8 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false 
               高炮
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="text-[10px] text-slate-500 font-medium"><span className="font-bold text-slate-800 font-mono text-xs">{isCaseMode ? '0' : '10'}</span> 次</div>
-              <div className="text-[10px] text-emerald-600 font-medium"><span className="font-bold font-mono text-xs">{isCaseMode ? '0' : '112'}</span> 发</div>
+              <div className="text-[10px] text-slate-500 font-medium"><span className="font-bold text-slate-800 font-mono text-xs">{gunOpsCount}</span> 次</div>
+              <div className="text-[10px] text-emerald-600 font-medium"><span className="font-bold font-mono text-xs">{gunAmmoCount}</span> 发</div>
             </div>
           </div>
         </div>
@@ -178,35 +284,22 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false 
               <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} iconSize={8} />
               
               <Bar yAxisId="right" dataKey="rocketAmmo" name="火箭弹(发)" fill="#3b82f6" radius={[2, 2, 0, 0]} maxBarSize={12} />
-              {!isCaseMode && <Bar yAxisId="right" dataKey="gunAmmo" name="高炮弹(发)" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={12} />}
+              <Bar yAxisId="right" dataKey="gunAmmo" name="高炮弹(发)" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={12} />
               
               <Line yAxisId="left" type="monotone" dataKey="rocketOps" name="火箭作业(次)" stroke="#2563eb" strokeWidth={2} dot={{ fill: '#fff', stroke: '#2563eb', r: 3, strokeWidth: 2 }} activeDot={{ r: 4 }} />
-              {!isCaseMode && <Line yAxisId="left" type="monotone" dataKey="gunOps" name="高炮作业(次)" stroke="#059669" strokeWidth={2} dot={{ fill: '#fff', stroke: '#059669', r: 3, strokeWidth: 2 }} activeDot={{ r: 4 }} />}
+              <Line yAxisId="left" type="monotone" dataKey="gunOps" name="高炮作业(次)" stroke="#059669" strokeWidth={2} dot={{ fill: '#fff', stroke: '#059669', r: 3, strokeWidth: 2 }} activeDot={{ r: 4 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
 
         {/* 作业总结内容嵌入到图表下方 */}
         <div className="bg-slate-50 border border-slate-100 p-3 rounded-lg text-xs text-slate-600 leading-relaxed font-sans shrink-0">
-          {isCaseMode ? (
-            <>
-              本次个例作业共作业 <span className="font-bold text-blue-600">3</span> 次，
-              成功完成作业 <span className="font-bold text-emerald-600">3</span> 次，
-              全部为火箭作业，
-              发射火箭弹共 <span className="font-bold text-slate-800">12</span> 发。
-              空域申请通过率 <span className="font-bold text-blue-600">100%</span>，总体雷达回波削弱明显。
-            </>
-          ) : (
-            <>
-              本次作业共作业 <span className="font-bold text-blue-600">20</span> 次，
-              成功完成作业 <span className="font-bold text-emerald-600">18</span> 次，
-              其中高炮作业 <span className="font-bold text-slate-800">10</span> 次，
-              发射高炮弹药共 <span className="font-bold text-slate-800">112</span> 发；
-              火箭作业 <span className="font-bold text-slate-800">10</span> 次，
-              发射火箭弹共 <span className="font-bold text-slate-800">80</span> 发。
-              空域申请总体通过率 <span className="font-bold text-blue-600">90%</span>，总体雷达回波削弱明显。
-            </>
-          )}
+          当前统计时段内共作业 <span className="font-bold text-blue-600">{totalOps}</span> 次，
+          成功完成作业 <span className="font-bold text-emerald-600">{successOps}</span> 次，
+          其中高炮作业 <span className="font-bold text-slate-800">{gunOpsCount}</span> 次，
+          发射高炮共 <span className="font-bold text-slate-800">{gunAmmoCount}</span> 发;
+          火箭作业 <span className="font-bold text-slate-800">{rocketOpsCount}</span> 次，
+          发射火箭弹共 <span className="font-bold text-slate-800">{rocketAmmoCount}</span> 发。
         </div>
       </div>
 

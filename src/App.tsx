@@ -10,25 +10,27 @@ import RightPanel from './components/RightPanel';
 import BottomPanel from './components/BottomPanel';
 import RegionSelector from './components/RegionSelector';
 import Map3D from './components/Map3D';
-import WeatherLegend from './components/WeatherLegend';
-import DataLayersPanel from './components/DataLayersPanel';
+import MapLayersPanel from './components/MapLayersPanel';
 import OperationCommandLeft from './components/OperationCommandLeft';
 import OperationCommandRight from './components/OperationCommandRight';
 import ScrollingMessages from './components/ScrollingMessages';
 import MapPopup from './components/MapPopup';
 import { WeatherPoint, weatherPoints } from './utils/weatherPoints';
 import EffectEvaluationLeft from './components/EffectEvaluationLeft';
-import EffectEvaluationRight, { EffectEvaluationRightCharts, EffectEvaluationHistoryList, getHistorySiteDetails } from './components/EffectEvaluationRight';
+import EffectEvaluationRight, { EffectEvaluationRightCharts, EffectEvaluationHistoryList, getHistorySiteDetails, RadarReflectivityStatChange } from './components/EffectEvaluationRight';
 import EffectEvaluationBottom from './components/EffectEvaluationBottom';
+import EquipmentManagementLeft from './components/EquipmentManagementLeft';
+import EquipmentManagementRight from './components/EquipmentManagementRight';
 
 export default function App() {
-  const [activeRegion, setActiveRegion] = useState('四川地块');
+  const [activeRegion, setActiveRegion] = useState('湖北地块');
   const [activeNav, setActiveNav] = useState('作业指挥'); // default to the newly requested view for easy viewing
   const [selectedPoint, setSelectedPoint] = useState<WeatherPoint | null>(null);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string>('h1');
   
   // Case Study Mode playback states
   const [isCaseMode, setIsCaseMode] = useState(false);
+  const [activeCaseId, setActiveCaseId] = useState('2026-06-18');
   const [playbackMinutes, setPlaybackMinutes] = useState(90);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -37,10 +39,17 @@ export default function App() {
   const [normalMinutes, setNormalMinutes] = useState(1080); // defaults to 18:00 (18 * 60 = 1080)
   const [normalIsPlaying, setNormalIsPlaying] = useState(false);
 
+  // Reset case mode to false when activeNav is '监测预警'
+  useEffect(() => {
+    if (activeNav === '监测预警') {
+      setIsCaseMode(false);
+    }
+  }, [activeNav]);
+
   // Sync map playback times with the selected history site's operation time when evaluating
   useEffect(() => {
     if (activeNav === '效果评估') {
-      const siteDetails = getHistorySiteDetails(selectedHistoryId, isCaseMode);
+      const siteDetails = getHistorySiteDetails(selectedHistoryId, isCaseMode, activeCaseId);
       if (siteDetails) {
         const [h, m] = siteDetails.time.split(':').map(Number);
         const siteMinutes = h * 60 + m;
@@ -52,7 +61,7 @@ export default function App() {
         }
       }
     }
-  }, [selectedHistoryId, isCaseMode, activeNav]);
+  }, [selectedHistoryId, isCaseMode, activeNav, activeCaseId]);
 
   // Playback timer ticker for Case Study Mode
   useEffect(() => {
@@ -81,18 +90,34 @@ export default function App() {
   // Handle switching between Real-time (实况) and Case Study (个例) modes
   const handleModeChange = (caseMode: boolean) => {
     setIsCaseMode(caseMode);
-    setSelectedHistoryId(caseMode ? 'c1' : 'h1');
     if (caseMode) {
+      const targetId = activeCaseId === '2026-07-02' ? 'n1' : 'c1';
+      setSelectedHistoryId(targetId);
+      if (activeCaseId === '2026-07-02') {
+        setActiveRegion('江苏地块');
+      } else {
+        setActiveRegion('湖北地块');
+      }
       setNormalIsPlaying(false);
       setPlaybackMinutes(90);
       setIsPlaying(false); // DO NOT autoplay when entering Case Study mode
     } else {
+      setSelectedHistoryId('h1');
+      setActiveRegion('湖北地块');
       setIsPlaying(false);
       setNormalIsPlaying(false);
     }
   };
 
-
+  const handleCaseChange = (caseId: string) => {
+    setActiveCaseId(caseId);
+    setSelectedHistoryId(caseId === '2026-07-02' ? 'n1' : 'c1');
+    if (caseId === '2026-07-02') {
+      setActiveRegion('江苏地块');
+    } else {
+      setActiveRegion('湖北地块');
+    }
+  };
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-100 font-sans text-slate-800">
@@ -106,9 +131,17 @@ export default function App() {
         onModeChange={handleModeChange}
         playbackMinutes={playbackMinutes}
         normalMinutes={normalMinutes}
+        activeCaseId={activeCaseId}
+        setActiveCaseId={handleCaseChange}
       />
       
-      {activeNav === '作业指挥' && <ScrollingMessages isCaseMode={isCaseMode} playbackMinutes={playbackMinutes} />}
+      {activeNav === '作业指挥' && (
+        <ScrollingMessages 
+          isCaseMode={isCaseMode} 
+          playbackMinutes={playbackMinutes} 
+          normalMinutes={normalMinutes} 
+        />
+      )}
       
       {activeNav === '监测预警' && (
         <>
@@ -134,46 +167,39 @@ export default function App() {
         <div className="absolute top-16 left-0 right-0 bottom-0 bg-[#f1f5f9] flex p-3 gap-3 overflow-hidden select-none z-30 animate-fade-in">
           {/* Column 1: Left Panel */}
           <div className="w-[360px] shrink-0 flex flex-col gap-3 h-full">
-            <EffectEvaluationLeft activeRegion={activeRegion} isCaseMode={isCaseMode} />
+            <EffectEvaluationLeft activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
           </div>
 
-          {/* Center Area: Map + Right Charts + Bottom Matrix */}
+          {/* Column 2: Center Map + Bottom Matrix */}
           <div className="flex-1 flex flex-col gap-3 min-h-0 min-w-0">
-            {/* Top part: Map & Center-Right Charts */}
-            <div className="flex-1 flex gap-3 min-h-0 min-w-0">
-              {/* Map Box */}
-              <div className="flex-1 bg-white border border-slate-200/50 rounded-xl flex flex-col shadow-sm relative min-w-0 overflow-hidden">
-                <div className="flex-1 relative overflow-hidden bg-slate-50">
-                  <Map3D 
-                    activeRegion={activeRegion} 
-                    onPointClick={setSelectedPoint} 
-                    isCaseMode={isCaseMode} 
-                    playbackMinutes={playbackMinutes} 
-                    normalMinutes={normalMinutes}
-                    activeNav={activeNav} 
-                    selectedHistoryId={selectedHistoryId}
-                  />
-                  <BottomPanel 
-                    isCaseMode={isCaseMode}
-                    playbackMinutes={playbackMinutes}
-                    setPlaybackMinutes={setPlaybackMinutes}
-                    isPlaying={isPlaying}
-                    setIsPlaying={setIsPlaying}
-                    playbackSpeed={playbackSpeed}
-                    setPlaybackSpeed={setPlaybackSpeed}
-                    normalMinutes={normalMinutes}
-                    setNormalMinutes={setNormalMinutes}
-                    normalIsPlaying={normalIsPlaying}
-                    setNormalIsPlaying={setNormalIsPlaying}
-                    variant="inline"
-                    selectedHistoryId={selectedHistoryId}
-                  />
-                </div>
-              </div>
-
-              {/* Center-Right Charts */}
-              <div className="w-[380px] shrink-0 flex flex-col gap-0 h-full">
-                <EffectEvaluationRightCharts selectedHistoryId={selectedHistoryId} isCaseMode={isCaseMode} />
+            {/* Map Box */}
+            <div className="flex-1 bg-white border border-slate-200/50 rounded-xl flex flex-col shadow-sm relative min-w-0 overflow-hidden">
+              <div className="flex-1 relative overflow-hidden bg-slate-50">
+                <Map3D 
+                  activeRegion={activeRegion} 
+                  onPointClick={setSelectedPoint} 
+                  isCaseMode={isCaseMode} 
+                  playbackMinutes={playbackMinutes} 
+                  normalMinutes={normalMinutes}
+                  activeNav={activeNav} 
+                  selectedHistoryId={selectedHistoryId}
+                  activeCaseId={activeCaseId}
+                />
+                <BottomPanel 
+                  isCaseMode={isCaseMode}
+                  playbackMinutes={playbackMinutes}
+                  setPlaybackMinutes={setPlaybackMinutes}
+                  isPlaying={isPlaying}
+                  setIsPlaying={setIsPlaying}
+                  playbackSpeed={playbackSpeed}
+                  setPlaybackSpeed={setPlaybackSpeed}
+                  normalMinutes={normalMinutes}
+                  setNormalMinutes={setNormalMinutes}
+                  normalIsPlaying={normalIsPlaying}
+                  setNormalIsPlaying={setNormalIsPlaying}
+                  variant="inline"
+                  selectedHistoryId={selectedHistoryId}
+                />
               </div>
             </div>
 
@@ -190,14 +216,34 @@ export default function App() {
             </div>
           </div>
 
-          {/* Column 4: History list */}
-          <div className="w-[280px] shrink-0 bg-white border border-slate-200/50 rounded-xl p-3.5 flex flex-col shadow-sm overflow-hidden h-full">
-            <EffectEvaluationHistoryList selectedHistoryId={selectedHistoryId} setSelectedHistoryId={setSelectedHistoryId} isCaseMode={isCaseMode} />
+          {/* Column 3: Right Panel with History list on top and Radar statistical changes at bottom */}
+          <div className="w-[380px] shrink-0 flex flex-col gap-3 h-full overflow-hidden">
+            {/* Historical operation list (top) */}
+            <div className="flex-1 min-h-0 bg-white border border-slate-200/50 rounded-xl p-3.5 flex flex-col shadow-sm overflow-hidden">
+              <EffectEvaluationHistoryList selectedHistoryId={selectedHistoryId} setSelectedHistoryId={setSelectedHistoryId} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
+            </div>
+            {/* Radar reflectivity statistical changes (bottom) */}
+            <div className="h-[240px] shrink-0">
+              <RadarReflectivityStatChange selectedHistoryId={selectedHistoryId} isCaseMode={isCaseMode} />
+            </div>
           </div>
         </div>
       )}
 
-      {activeNav !== '效果评估' && (
+      {activeNav === '装备管理' && (
+        <>
+          <EquipmentManagementLeft 
+            activeRegion={activeRegion} 
+            setActiveRegion={setActiveRegion} 
+            isCaseMode={isCaseMode}
+          />
+          <EquipmentManagementRight 
+            activeRegion={activeRegion}
+          />
+        </>
+      )}
+
+      {activeNav !== '效果评估' && activeNav !== '装备管理' && (
         <BottomPanel 
           isCaseMode={isCaseMode}
           playbackMinutes={playbackMinutes}
@@ -212,9 +258,8 @@ export default function App() {
           setNormalIsPlaying={setNormalIsPlaying}
         />
       )}
-      {activeNav !== '效果评估' && <WeatherLegend activeNav={activeNav} />}
-      {activeNav === '监测预警' && (
-        <DataLayersPanel 
+      {activeNav !== '效果评估' && (
+        <MapLayersPanel 
           activeNav={activeNav}
           isCaseMode={isCaseMode}
           playbackMinutes={playbackMinutes}

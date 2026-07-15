@@ -85,7 +85,17 @@ export default function MapPopup({ point, onClose }: { point: WeatherPoint | nul
           </div>
           <div className="flex text-xs items-center border-b border-slate-50 pb-1">
             <span className="w-[40px] text-slate-500 mr-2 font-medium shrink-0">类型:</span>
-            <span className="text-slate-800 font-medium truncate">{point.type === 'rocket' ? '火箭' : point.type === 'gun' ? '高炮' : '作业车'}</span>
+            <span className="text-slate-800 font-medium truncate">
+              {(() => {
+                const matchNum = point.id.match(/\d+/);
+                const numVal = matchNum ? parseInt(matchNum[0], 10) : 0;
+                const siteClass = point.type === 'vehicle' ? 'temporary' : (numVal % 2 === 1 ? 'fixed' : 'mobile');
+                if (siteClass === 'temporary') return '临时点';
+                const prefix = siteClass === 'fixed' ? '固定' : '移动';
+                const suffix = point.type === 'rocket' ? '火箭' : '高炮';
+                return `${prefix}${suffix}`;
+              })()}
+            </span>
           </div>
           <div className="flex text-xs items-center border-b border-slate-50 pb-1">
             <span className="w-[40px] text-slate-500 mr-2 font-medium shrink-0">装备:</span>
