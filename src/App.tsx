@@ -22,7 +22,7 @@ import EffectEvaluationRight, { EffectEvaluationRightCharts, EffectEvaluationHis
 import EffectEvaluationBottom from './components/EffectEvaluationBottom';
 
 export default function App() {
-  const [activeRegion, setActiveRegion] = useState('湖北地块');
+  const [activeRegion, setActiveRegion] = useState('四川地块');
   const [activeNav, setActiveNav] = useState('作业指挥'); // default to the newly requested view for easy viewing
   const [selectedPoint, setSelectedPoint] = useState<WeatherPoint | null>(null);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string>('h1');
@@ -108,14 +108,11 @@ export default function App() {
         normalMinutes={normalMinutes}
       />
       
-      {activeNav !== '效果评估' && (
-        <RegionSelector activeRegion={activeRegion} setActiveRegion={setActiveRegion} />
-      )}
       {activeNav === '作业指挥' && <ScrollingMessages isCaseMode={isCaseMode} playbackMinutes={playbackMinutes} />}
       
       {activeNav === '监测预警' && (
         <>
-          <LeftPanel />
+          <LeftPanel activeRegion={activeRegion} setActiveRegion={setActiveRegion} />
           <RightPanel />
         </>
       )}
@@ -125,6 +122,8 @@ export default function App() {
           <OperationCommandLeft 
             isCaseMode={isCaseMode} 
             playbackMinutes={playbackMinutes} 
+            activeRegion={activeRegion}
+            setActiveRegion={setActiveRegion}
           />
           <OperationCommandRight isCaseMode={isCaseMode} playbackMinutes={playbackMinutes} />
           {selectedPoint && <MapPopup point={selectedPoint} onClose={() => setSelectedPoint(null)} />}

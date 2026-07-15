@@ -81,7 +81,7 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
   };
 
   return (
-    <div className="absolute top-24 right-6 z-40 flex flex-col gap-4 w-[360px] h-[calc(100vh-130px)] pb-4">
+    <div className="absolute top-[76px] bottom-6 right-6 z-40 flex flex-col gap-4 w-[360px]">
       
       {/* 作业指令 */}
       <div className="flex-1 min-h-0 bg-white/95 backdrop-blur-md shadow-lg border border-slate-200/60 rounded-xl p-4 flex flex-col">

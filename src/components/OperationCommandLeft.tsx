@@ -2,6 +2,7 @@ import React from 'react';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Clock, Rocket, ArrowUpRight, Navigation, MapPin } from 'lucide-react';
 import { getAdministrativeAddress } from './EffectEvaluationRight';
+import RegionSelector from './RegionSelector';
 
 const statsData = [
   { time: '12:00', rocketOps: 1, rocketAmmo: 8, gunOps: 2, gunAmmo: 25 },
@@ -16,11 +17,15 @@ const statsData = [
 interface OperationCommandLeftProps {
   isCaseMode: boolean;
   playbackMinutes: number;
+  activeRegion: string;
+  setActiveRegion: (region: string) => void;
 }
 
 export default function OperationCommandLeft({
   isCaseMode,
-  playbackMinutes
+  playbackMinutes,
+  activeRegion,
+  setActiveRegion
 }: OperationCommandLeftProps) {
 
   // Time formatting helper
@@ -125,15 +130,10 @@ export default function OperationCommandLeft({
   }
 
   return (
-    <div className="absolute top-24 left-6 z-40 flex flex-col gap-4 w-[360px] h-[calc(100vh-130px)] pb-4 overflow-y-auto pr-1 -mr-1 scrollbar-none">
+    <div className="absolute top-[76px] bottom-6 left-6 z-40 flex flex-col gap-4 w-[360px] overflow-y-auto pr-1 -mr-1 scrollbar-none">
       
-      {/* 空域情况 */}
-      <div className="shrink-0 bg-white/95 backdrop-blur-md shadow-lg border border-slate-200/60 rounded-xl p-3 flex items-center gap-3">
-        <div className="flex items-center gap-3 w-full">
-          <div className="text-sm font-bold text-slate-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">空域24</div>
-          <div className="text-xs text-slate-600 flex-1 text-right">生效时间：<span className="font-mono font-medium">14:00-20:00</span></div>
-        </div>
-      </div>
+      {/* Region Selector placed first */}
+      <RegionSelector activeRegion={activeRegion} setActiveRegion={setActiveRegion} inline />
  
       {/* 今日作业统计 */}
       <div className="shrink-0 h-[280px] bg-white/95 backdrop-blur-md shadow-lg border border-slate-200/60 rounded-xl p-4 flex flex-col">
@@ -217,238 +217,107 @@ export default function OperationCommandLeft({
                   window.dispatchEvent(new CustomEvent('map-focus-site', { detail: { siteName: latestResult.station } }));
                 }
               }}
-              className="p-3 rounded-lg border border-slate-100 bg-gradient-to-r from-slate-50 to-white shadow-sm flex flex-col gap-1.5 mb-4 shrink-0 cursor-pointer hover:border-blue-200/60 transition-all hover:shadow-md active:bg-slate-100/50"
+              className="flex flex-col gap-1.5 pb-2 cursor-pointer hover:opacity-90 transition-all"
             >
               {/* Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`px-2 py-0.5 text-[10px] font-bold text-white rounded-md shadow-sm ${
-                    latestResult.type === '火箭' ? 'bg-orange-500' : 'bg-blue-500'
-                  }`}>
-                    {latestResult.type}
-                  </span>
-                  <span className="text-sm font-bold text-slate-700 ml-0.5">{latestResult.station}</span>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-1.5 py-0.5 text-[10px] font-bold text-white rounded ${
+                  latestResult.type === '火箭' ? 'bg-orange-500' : 'bg-blue-500'
+                }`}>
+                  {latestResult.type}
+                </span>
+                <span className="text-sm font-bold text-slate-700 ml-0.5">{latestResult.station}</span>
               </div>
 
               {/* Time */}
-              <div className="flex items-center gap-1.5 px-1 text-[11px] text-slate-600">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-600 px-0.5">
                 <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 <span className="font-medium">时间: <span className="font-mono">{isCaseMode ? '2026-06-18 ' : '2026-07-02 '}{latestResult.time}</span></span>
               </div>
 
               {/* Location */}
-              <div className="flex items-center gap-1.5 px-1 text-[11px] text-slate-600">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-600 px-0.5">
                 <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 <span className="font-medium">
                   地点: {latestResult.station === '无当前回放作业' ? '--' : getAdministrativeAddress(latestResult.station)}
                 </span>
               </div>
 
-              {/* Action parameter details in single line layout with blue Lucide-react icons */}
-              <div className="flex items-center justify-between px-1 text-slate-600 text-[11px]">
-                <div className="flex items-center gap-1.5">
+              {/* Action parameters */}
+              <div className="flex items-center justify-between px-0.5 text-slate-600 text-[11px] pt-1.5 border-t border-slate-100/60 mt-0.5">
+                <div className="flex items-center gap-1">
                   <Rocket className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                   <span className="font-medium">用量: {latestResult.count}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <ArrowUpRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                   <span className="font-medium">仰角: {latestResult.angle}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <Navigation className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                   <span className="font-medium">方位: <span className="font-mono">{latestResult.azimuth}</span></span>
                 </div>
               </div>
             </div>
             
-            {/* Radar profile */}
-            <div className="flex-1 min-h-[160px] w-full mt-1 relative bg-slate-50/40 rounded-lg p-1 overflow-hidden border border-slate-200/50 flex flex-col justify-center">
-              {(() => {
-                const angleValue = parseInt(latestResult.angle) || 45;
-                let burstX = 3500;
-                let burstY = 5600;
-                if (latestResult.station.includes('金湖')) {
-                  burstX = 3700;
-                  burstY = 5800;
-                } else if (latestResult.station.includes('刘仁八')) {
-                  burstX = 3200;
-                  burstY = 6200;
-                } else if (latestResult.station.includes('白沙')) {
-                  burstX = 4000;
-                  burstY = 5400;
-                } else if (latestResult.station.includes('姜祥')) {
-                  burstX = 3500;
-                  burstY = 5600;
-                } else if (latestResult.station.includes('林家')) {
-                  burstX = 3600;
-                  burstY = 5700;
-                } else {
-                  burstX = 3500;
-                  burstY = 5600;
-                }
+            {/* Radar composite reflectivity schematic */}
+            <div className="w-full mt-1 relative bg-[#090F1E] rounded-xl p-2.5 overflow-hidden border border-slate-800/80 flex items-center justify-center text-slate-300 font-sans shadow-inner select-none">
+              <svg viewBox="0 0 200 200" className="w-full max-w-[190px] h-auto overflow-visible">
+                <defs>
+                  <filter id="radarBlur" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3.5" />
+                  </filter>
+                </defs>
 
-                const selectedHistoryId = latestResult.station || 'h1';
+                {/* Concentric Range Rings */}
+                <circle cx="100" cy="100" r="90" fill="none" stroke="#1e293b" strokeWidth="0.8" strokeDasharray="2,2" />
+                <circle cx="100" cy="100" r="60" fill="none" stroke="#1e293b" strokeWidth="0.8" />
+                <circle cx="100" cy="100" r="30" fill="none" stroke="#1e293b" strokeWidth="0.8" strokeDasharray="2,2" />
+                
+                {/* Angle grid lines */}
+                <line x1="10" y1="100" x2="190" y2="100" stroke="#1e293b" strokeWidth="0.6" />
+                <line x1="100" y1="10" x2="100" y2="190" stroke="#1e293b" strokeWidth="0.6" />
+                <line x1="36.3" y1="36.3" x2="163.6" y2="163.6" stroke="#1e293b" strokeWidth="0.6" strokeDasharray="3,3" opacity="0.5" />
+                <line x1="36.3" y1="163.6" x2="163.6" y2="36.3" stroke="#1e293b" strokeWidth="0.6" strokeDasharray="3,3" opacity="0.5" />
 
-                // Coordinate mapping functions for a compact 320x160 viewBox
-                const mapX = (xVal: number) => 32 + (xVal / 8000) * 260;
-                const mapY = (yVal: number) => 136 - (yVal / 10000) * 116; // 136 is X baseline, 20 is top limit (116px height)
+                {/* Range Labels */}
+                <text x="100" y="66" fill="#475569" fontSize="6.5" fontStyle="italic" textAnchor="middle">30km</text>
+                <text x="100" y="36" fill="#475569" fontSize="6.5" fontStyle="italic" textAnchor="middle">60km</text>
+                <text x="100" y="6" fill="#475569" fontSize="6.5" fontStyle="italic" textAnchor="middle">90km</text>
 
-                const getWave = (x: number) => {
-                  const seedNum = (selectedHistoryId.charCodeAt(0) || 0) + (selectedHistoryId.charCodeAt(1) || 0);
-                  return Math.sin((x + seedNum * 120) / 1000) * 400 + Math.cos((x - seedNum * 80) / 600) * 200;
-                };
+                {/* Weather Echo Blobs (Dynamic placement based on selected station) */}
+                {(() => {
+                  let dx = 0;
+                  let dy = 0;
+                  if (latestResult.station.includes('金湖')) { dx = 25; dy = -15; }
+                  else if (latestResult.station.includes('刘仁八')) { dx = -20; dy = 20; }
+                  else if (latestResult.station.includes('白沙')) { dx = 35; dy = 10; }
+                  else if (latestResult.station.includes('林家')) { dx = -10; dy = -25; }
+                  else { dx = 10; dy = -10; }
 
-                const generateAreaPath = (
-                  xStart: number,
-                  xEnd: number,
-                  getTopY: (x: number) => number,
-                  getBottomY: (x: number) => number
-                ) => {
-                  const points = [];
-                  const step = 400;
-                  for (let x = xStart; x <= xEnd; x += step) {
-                    points.push({ x, yTop: getTopY(x), yBottom: getBottomY(x) });
-                  }
-                  if (points[points.length - 1].x < xEnd) {
-                    points.push({ x: xEnd, yTop: getTopY(xEnd), yBottom: getBottomY(xEnd) });
-                  }
-
-                  let topPath = `M ${mapX(points[0].x)} ${mapY(points[0].yTop)}`;
-                  for (let i = 1; i < points.length; i++) {
-                    topPath += ` L ${mapX(points[i].x)} ${mapY(points[i].yTop)}`;
-                  }
-
-                  let bottomPath = ` L ${mapX(points[points.length - 1].x)} ${mapY(points[points.length - 1].yBottom)}`;
-                  for (let i = points.length - 2; i >= 0; i--) {
-                    bottomPath += ` L ${mapX(points[i].x)} ${mapY(points[i].yBottom)}`;
-                  }
-
-                  return `${topPath}${bottomPath} Z`;
-                };
-
-                const bluePath = generateAreaPath(0, 8000, x => 9300 + getWave(x)*0.2, x => 9000 + getWave(x)*0.2);
-                const greenLightPath = generateAreaPath(0, 8000, x => 9000 + getWave(x)*0.2, x => 2000 + getWave(x)*0.6);
-                const greenDarkPath = generateAreaPath(0, 8000, x => 7800 + getWave(x)*0.5, x => 3500 + getWave(x)*0.5);
-                const yellowPath = generateAreaPath(1000, 7200, x => 6800 + getWave(x)*0.4, x => 4200 + getWave(x)*0.4);
-                const orangePath = generateAreaPath(2200, 5800, x => 5700 + getWave(x)*0.3, x => 4800 + getWave(x)*0.3);
-
-                // Trajectory Calculations
-                const x0 = mapX(0);
-                const y0 = mapY(1200); // launch height
-
-                const x1 = mapX(burstX);
-                const y1 = mapY(burstY);
-
-                const vertexX = burstX * 0.55;
-                const vertexY = Math.max(burstY + 1200, Math.min(10500, 6800 + (angleValue - 45) * 120));
-                const xc = mapX(vertexX);
-                const yc = mapY(vertexY);
-
-                return (
-                  <svg viewBox="0 0 320 160" className="w-full h-full" style={{ display: 'block' }}>
-                    {/* 1. Radar Echo Color Layers */}
-                    <path d={greenLightPath} fill="#4ade80" fillOpacity={0.3} />
-                    <path d={greenDarkPath} fill="#22c55e" fillOpacity={0.45} />
-                    <path d={yellowPath} fill="#eab308" fillOpacity={0.55} />
-                    <path d={orangePath} fill="#ea580c" fillOpacity={0.65} />
-                    <path d={bluePath} fill="#3b82f6" fillOpacity={0.4} />
-
-                    {/* 2. Horizontal Grid Lines */}
-                    {[2000, 4000, 6000, 8000, 10000].map((hVal) => (
-                      <line
-                        key={hVal}
-                        x1={mapX(0)}
-                        y1={mapY(hVal)}
-                        x2={mapX(8000)}
-                        y2={mapY(hVal)}
-                        stroke="#e2e8f0"
-                        strokeWidth={0.6}
-                        strokeDasharray="3,3"
-                      />
-                    ))}
-
-                    {/* 3. Vertical Grid Lines */}
-                    {[2000, 4000, 6000, 8000].map((rVal) => (
-                      <line
-                        key={rVal}
-                        x1={mapX(rVal)}
-                        y1={mapY(0)}
-                        x2={mapX(rVal)}
-                        y2={mapY(10000)}
-                        stroke="#e2e8f0"
-                        strokeWidth={0.6}
-                        strokeDasharray="3,3"
-                      />
-                    ))}
-
-                    {/* 4. Y-Axis and Ticks/Labels */}
-                    <line x1={mapX(0)} y1={mapY(0)} x2={mapX(0)} y2={mapY(10000) - 5} stroke="#0284c7" strokeWidth={1} />
-                    {[0, 2000, 4000, 6000, 8000, 10000].map((hVal) => (
-                      <g key={hVal}>
-                        <line x1={mapX(0) - 3} y1={mapY(hVal)} x2={mapX(0)} y2={mapY(hVal)} stroke="#0284c7" strokeWidth={1} />
-                        <text
-                          x={mapX(0) - 5}
-                          y={mapY(hVal) + 2.5}
-                          fill="#475569"
-                          fontSize="7.5"
-                          fontWeight="500"
-                          textAnchor="end"
-                          fontFamily="sans-serif"
-                        >
-                          {hVal / 1000}
-                        </text>
-                      </g>
-                    ))}
-
-                    {/* 5. X-Axis and Ticks/Labels */}
-                    <line x1={mapX(0)} y1={mapY(0)} x2={mapX(8000) + 10} y2={mapY(0)} stroke="#0284c7" strokeWidth={1} />
-                    {[0, 2000, 4000, 6000, 8000].map((rVal) => (
-                      <g key={rVal}>
-                        <line x1={mapX(rVal)} y1={mapY(0)} x2={mapX(rVal)} y2={mapY(0) + 3} stroke="#0284c7" strokeWidth={1} />
-                        <text
-                          x={mapX(rVal)}
-                          y={mapY(0) + 10}
-                          fill="#475569"
-                          fontSize="7.5"
-                          fontWeight="500"
-                          textAnchor="middle"
-                          fontFamily="sans-serif"
-                        >
-                          {rVal}
-                        </text>
-                      </g>
-                    ))}
-
-                    {/* 6. Axis Titles */}
-                    <text x={mapX(0) - 5} y={mapY(10000) - 4} fill="#0284c7" fontSize={7} fontWeight="600" textAnchor="end" fontFamily="sans-serif">
-                      高度(km)
-                    </text>
-                    <text x={mapX(8000) + 10} y={mapY(0) + 9} fill="#0284c7" fontSize={7} fontWeight="600" textAnchor="start" fontFamily="sans-serif">
-                      距离(m)
-                    </text>
-
-                    {/* 7. Trajectory Path */}
-                    <path
-                      d={`M ${x0} ${y0} Q ${xc} ${yc} ${x1} ${y1}`}
-                      stroke="#000000"
-                      strokeWidth={1.8}
-                      strokeLinecap="round"
-                      fill="none"
-                    />
-
-                    {/* 8. Burst Dot and Legend Badge */}
-                    <circle cx={x1} cy={y1} r={6} fill="#ef4444" opacity={0.25} className="animate-pulse" />
-                    <circle cx={x1} cy={y1} r={2.5} fill="#ef4444" stroke="#ffffff" strokeWidth={0.8} />
-                    <g transform={`translate(${Math.min(240, x1 + 5)}, ${Math.min(120, y1 - 6)})`}>
-                      <rect width={55} height={12} rx={2} fill="#ffffff" stroke="#e2e8f0" strokeWidth={0.6} className="shadow-sm" />
-                      <text x={4} y={8.5} fill="#dc2626" fontSize={6.5} fontWeight="bold" fontFamily="sans-serif">
-                        炸点({burstX}m)
-                      </text>
+                  return (
+                    <g filter="url(#radarBlur)" opacity="0.85" className="transition-all duration-700">
+                      {/* Outermost Light Green (dBZ 15-25) */}
+                      <path d={`M ${90+dx} ${75+dy} Q ${60+dx} ${90+dy} ${80+dx} ${130+dy} T ${130+dx} ${125+dy} T ${140+dx} ${85+dy} Z`} fill="#22c55e" opacity="0.4" />
+                      
+                      {/* Medium Green/Yellow (dBZ 25-35) */}
+                      <path d={`M ${95+dx} ${85+dy} Q ${75+dx} ${95+dy} ${90+dx} ${120+dy} T ${120+dx} ${115+dy} T ${125+dx} ${95+dy} Z`} fill="#a3e635" opacity="0.65" />
+                      
+                      {/* Yellow Core (dBZ 35-45) */}
+                      <path d={`M ${100+dx} ${90+dy} Q ${85+dx} ${100+dy} ${100+dx} ${112+dy} T ${115+dx} ${110+dy} T ${118+dx} ${100+dy} Z`} fill="#eab308" opacity="0.8" />
+                      
+                      {/* Red Strong Core (dBZ 45-55) */}
+                      <circle cx={105+dx} cy={102+dy} r="12" fill="#ef4444" opacity="0.9" />
+                      
+                      {/* Purple Severe/Hail Core (dBZ > 55) */}
+                      <circle cx={107+dx} cy={103+dy} r="6" fill="#a855f7" opacity="0.95" />
                     </g>
-                  </svg>
-                );
-              })()}
+                  );
+                })()}
+
+                {/* Centered radar station indicator */}
+                <circle cx="100" cy="100" r="2.5" fill="#10b981" stroke="#ffffff" strokeWidth="0.5" />
+              </svg>
             </div>
           </>
         )}

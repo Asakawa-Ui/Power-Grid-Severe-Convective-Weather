@@ -9,6 +9,12 @@ import {
   CloudLightning,
   AlertTriangle
 } from 'lucide-react';
+import RegionSelector from './RegionSelector';
+
+interface LeftPanelProps {
+  activeRegion: string;
+  setActiveRegion: (region: string) => void;
+}
 
 interface ChildProduct {
   name: string;
@@ -24,13 +30,11 @@ interface SubCategory {
 }
 
 const mainCategories = [
-  { id: 'satellite', name: '卫星', icon: Satellite },
   { id: 'radar', name: '雷达', icon: Radar },
+  { id: 'satellite', name: '卫星', icon: Satellite },
+  { id: 'lightning', name: '雷电', icon: CloudLightning },
   { id: 'actual', name: '天气实况', icon: Activity },
-  { id: 'rain', name: '灾害天气', icon: CloudRain },
-  { id: 'forecast', name: '预报', icon: LineChart },
-  { id: 'lightning', name: '闪电', icon: CloudLightning },
-  { id: 'warning', name: '预警信息', icon: AlertTriangle },
+  { id: 'forecast', name: '数值预报', icon: LineChart },
 ];
 
 const hierarchicalData: Record<string, SubCategory[]> = {
@@ -201,9 +205,16 @@ const hierarchicalData: Record<string, SubCategory[]> = {
   ],
   lightning: [
     {
-      name: '闪电定位仪数据',
+      name: '雷电监测',
       products: [
-        { name: '闪电监测', desc: '基于地基闪电定位网纳秒级实时探测，实时动态追踪云地放电落点、强度与正负极性，并智能展示在电子沙盘上。', unit: 'kA', range: '-250 - +250 kA', levels: ['弱雷击', '高能落雷', '极端雷暴中心'] }
+        { name: '雷电监测', desc: '基于地基闪电定位网纳秒级实时探测，实时动态追踪云地放电落点、强度与正负极性，并智能展示在电子沙盘上。', unit: 'kA', range: '-250 - +250 kA', levels: ['弱雷击', '高能落雷', '极端雷暴中心'] }
+      ]
+    },
+    {
+      name: '雷电预测',
+      products: [
+        { name: '雷电30min预警', desc: '结合雷达回波外推与三维电场特征，对未来30分钟内发生高能落雷、雷击的落区及强度进行超前临近预测预警。', unit: '级别', range: '低 - 高', levels: ['关注级', '警戒级', '重度雷击预警'] },
+        { name: '72h预报', desc: '结合数值天气预报模式与大气热力、动力不稳定指数，对未来72小时内雷电活动的发生潜势及落区演变进行中短期趋势预测。', unit: '发生概率', range: '0 - 100%', levels: ['低潜势', '中等概率', '高发暴发区'] }
       ]
     }
   ],
@@ -221,12 +232,12 @@ const hierarchicalData: Record<string, SubCategory[]> = {
 };
 
 // Module-level cache to persist selection state across component unmounts/remounts (e.g., when switching top navigation tabs)
-let cachedActiveMain = 'satellite';
+let cachedActiveMain = 'radar';
 let cachedExpandedSubCats: string[] = [];
 export let cachedSelectedProductKey: string | null = null;
 let cachedIsPopupOpen = true;
 
-export default function LeftPanel() {
+export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelProps) {
   const [activeMain, setActiveMainState] = useState(cachedActiveMain);
   const [expandedSubCats, setExpandedSubCatsState] = useState<string[]>(cachedExpandedSubCats);
   const [selectedProductKey, setSelectedProductKeyState] = useState<string | null>(cachedSelectedProductKey);
@@ -379,9 +390,9 @@ export default function LeftPanel() {
   useEffect(() => {
     if (!popupRef.current || !isPopupOpen) return;
 
-    // LeftPanel is absolutely positioned at top-24 (96px).
+    // LeftPanel is absolutely positioned at top-[76px] (76px).
     // Let's set a safety margin at the bottom of the viewport (24px).
-    const maxBottom = windowHeight - 96 - 24;
+    const maxBottom = windowHeight - 76 - 24;
     const targetTop = activeIndex * 88; // Default alignment top matching button offset (80px height + 8px gap)
 
     // Measure actual scrollHeight or offsetHeight of the popup
@@ -396,12 +407,15 @@ export default function LeftPanel() {
     }
 
     // Set high-precision max-height to ensure it is fully within bounds and scrollable if needed
-    const calculatedMaxHeight = Math.max(200, windowHeight - 96 - 48);
+    const calculatedMaxHeight = Math.max(200, windowHeight - 76 - 48);
     setPopupMaxHeight(calculatedMaxHeight);
   }, [activeMain, expandedSubCats, windowHeight, activeIndex, isPopupOpen]);
 
   return (
-    <div className="absolute top-24 left-6 z-40 flex flex-col gap-3 w-[304px] pointer-events-none font-sans animate-fade-in">
+    <div className="absolute top-[76px] left-6 z-40 flex flex-col gap-3 w-[304px] pointer-events-none font-sans animate-fade-in">
+      {/* Region Selector placed first */}
+      <RegionSelector activeRegion={activeRegion} setActiveRegion={setActiveRegion} inline />
+
       {/* 2 & 3: Main Categories and Pop-up Sub Products Column Row */}
       <div ref={panelRef} className="relative flex gap-2 pointer-events-auto shrink-0 select-none">
         {/* Main Categories Column */}
