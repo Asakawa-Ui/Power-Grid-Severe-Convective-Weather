@@ -16,7 +16,7 @@ import OperationCommandRight from './components/OperationCommandRight';
 import ScrollingMessages from './components/ScrollingMessages';
 import MapPopup from './components/MapPopup';
 import { WeatherPoint, weatherPoints } from './utils/weatherPoints';
-import EffectEvaluationLeft from './components/EffectEvaluationLeft';
+import EffectEvaluationLeft, { EffectEvaluationLeftScopeAndStats, EffectEvaluationLeftTable } from './components/EffectEvaluationLeft';
 import EffectEvaluationRight, { EffectEvaluationRightCharts, EffectEvaluationHistoryList, getHistorySiteDetails, RadarReflectivityStatChange } from './components/EffectEvaluationRight';
 import EffectEvaluationBottom from './components/EffectEvaluationBottom';
 import EquipmentManagementLeft from './components/EquipmentManagementLeft';
@@ -39,12 +39,46 @@ export default function App() {
   const [normalMinutes, setNormalMinutes] = useState(1080); // defaults to 18:00 (18 * 60 = 1080)
   const [normalIsPlaying, setNormalIsPlaying] = useState(false);
 
-  // Reset case mode to false when activeNav is '监测预警'
+  // Reset case mode when switching activeNav: force case mode for 效果评估, reset to real-time for 监测预警
   useEffect(() => {
     if (activeNav === '监测预警') {
       setIsCaseMode(false);
+    } else if (activeNav === '效果评估') {
+      setIsCaseMode(true);
+      if (activeCaseId === '2026-07-02') {
+        setActiveRegion('江苏地块');
+        if (!selectedHistoryId.startsWith('n')) {
+          setSelectedHistoryId('n1');
+        }
+      } else {
+        setActiveRegion('湖北地块');
+        if (!selectedHistoryId.startsWith('c')) {
+          setSelectedHistoryId('c1');
+        }
+      }
     }
   }, [activeNav]);
+
+  // Sync activeRegion and selectedHistoryId when switching case mode or activeCaseId
+  useEffect(() => {
+    if (isCaseMode) {
+      if (activeCaseId === '2026-07-02') {
+        setActiveRegion('江苏地块');
+        if (!selectedHistoryId.startsWith('n')) {
+          setSelectedHistoryId('n1');
+        }
+      } else {
+        setActiveRegion('湖北地块');
+        if (!selectedHistoryId.startsWith('c')) {
+          setSelectedHistoryId('c1');
+        }
+      }
+    } else {
+      if (!selectedHistoryId.startsWith('h')) {
+        setSelectedHistoryId('h1');
+      }
+    }
+  }, [isCaseMode, activeCaseId]);
 
   // Sync map playback times with the selected history site's operation time when evaluating
   useEffect(() => {
@@ -159,75 +193,160 @@ export default function App() {
             setActiveRegion={setActiveRegion}
           />
           <OperationCommandRight isCaseMode={isCaseMode} playbackMinutes={playbackMinutes} />
-          {selectedPoint && <MapPopup point={selectedPoint} onClose={() => setSelectedPoint(null)} />}
         </>
       )}
 
       {activeNav === '效果评估' && (
-        <div className="absolute top-16 left-0 right-0 bottom-0 bg-[#f1f5f9] flex p-3 gap-3 overflow-hidden select-none z-30 animate-fade-in">
-          {/* Column 1: Left Panel */}
-          <div className="w-[360px] shrink-0 flex flex-col gap-3 h-full">
-            <EffectEvaluationLeft activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
-          </div>
+        isCaseMode && activeCaseId === '2026-06-18' ? (
+          /* Specialized Layout for 2026-06-18 湖北黄石个例 (Matches User Screenshot) */
+          <div className="absolute top-16 left-0 right-0 bottom-0 bg-[#f1f5f9] flex p-3 gap-3 overflow-hidden select-none z-30 animate-fade-in">
+            {/* Column 1: Left Panel (Scope & Stats on top, Effect Table on bottom) */}
+            <div className="w-[320px] shrink-0 flex flex-col gap-3 h-full overflow-hidden">
+              <div className="shrink-0">
+                <EffectEvaluationLeftScopeAndStats activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
+              </div>
+              <div className="flex-1 min-h-0">
+                <EffectEvaluationLeftTable activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
+              </div>
+            </div>
 
-          {/* Column 2: Center Map + Bottom Matrix */}
-          <div className="flex-1 flex flex-col gap-3 min-h-0 min-w-0">
-            {/* Map Box */}
-            <div className="flex-1 bg-white border border-slate-200/50 rounded-xl flex flex-col shadow-sm relative min-w-0 overflow-hidden">
-              <div className="flex-1 relative overflow-hidden bg-slate-50">
-                <Map3D 
-                  activeRegion={activeRegion} 
-                  onPointClick={setSelectedPoint} 
-                  isCaseMode={isCaseMode} 
-                  playbackMinutes={playbackMinutes} 
-                  normalMinutes={normalMinutes}
-                  activeNav={activeNav} 
-                  selectedHistoryId={selectedHistoryId}
-                  activeCaseId={activeCaseId}
-                />
-                <BottomPanel 
+            {/* Middle Block (Spans Middle Two Columns: Col 2 Map + Col 3 Charts on Top, Bottom Matrix on Bottom) */}
+            <div className="flex-1 flex flex-col gap-3 min-h-0 min-w-0 h-full">
+              {/* Top Row inside Middle Block: Map + 3 Radar Charts */}
+              <div className="flex-1 flex gap-3 min-h-0 min-w-0">
+                {/* Col 2: Center Map */}
+                <div className="flex-1 bg-white border border-slate-200/50 rounded-xl flex flex-col shadow-sm relative min-w-0 overflow-hidden">
+                  <div className="flex-1 relative overflow-hidden bg-slate-50">
+                    <Map3D 
+                      activeRegion={activeRegion} 
+                      onPointClick={setSelectedPoint} 
+                      isCaseMode={isCaseMode} 
+                      playbackMinutes={playbackMinutes} 
+                      normalMinutes={normalMinutes}
+                      activeNav={activeNav} 
+                      selectedHistoryId={selectedHistoryId}
+                      activeCaseId={activeCaseId}
+                    />
+                    <BottomPanel 
+                      activeNav={activeNav}
+                      isCaseMode={isCaseMode}
+                      playbackMinutes={playbackMinutes}
+                      setPlaybackMinutes={setPlaybackMinutes}
+                      isPlaying={isPlaying}
+                      setIsPlaying={setIsPlaying}
+                      playbackSpeed={playbackSpeed}
+                      setPlaybackSpeed={setPlaybackSpeed}
+                      normalMinutes={normalMinutes}
+                      setNormalMinutes={setNormalMinutes}
+                      normalIsPlaying={normalIsPlaying}
+                      setNormalIsPlaying={setNormalIsPlaying}
+                      variant="inline"
+                      selectedHistoryId={selectedHistoryId}
+                    />
+                  </div>
+                </div>
+
+                {/* Col 3: Middle-Right Panel (3 Radar & Profile Charts) */}
+                <div className="w-[360px] shrink-0 flex flex-col gap-2 h-full overflow-hidden">
+                  <EffectEvaluationRightCharts 
+                    selectedHistoryId={selectedHistoryId} 
+                    isCaseMode={isCaseMode} 
+                    activeCaseId={activeCaseId} 
+                  />
+                </div>
+              </div>
+
+              {/* Bottom Row inside Middle Block (Spanning Middle Two Columns): Radar Matrix Thumbnails */}
+              <div className="h-[175px] shrink-0 bg-white border border-slate-200/50 rounded-xl p-3 shadow-sm flex flex-col justify-center overflow-x-auto scrollbar-none">
+                <EffectEvaluationBottom
                   isCaseMode={isCaseMode}
                   playbackMinutes={playbackMinutes}
                   setPlaybackMinutes={setPlaybackMinutes}
                   isPlaying={isPlaying}
                   setIsPlaying={setIsPlaying}
-                  playbackSpeed={playbackSpeed}
-                  setPlaybackSpeed={setPlaybackSpeed}
-                  normalMinutes={normalMinutes}
-                  setNormalMinutes={setNormalMinutes}
-                  normalIsPlaying={normalIsPlaying}
-                  setNormalIsPlaying={setNormalIsPlaying}
-                  variant="inline"
                   selectedHistoryId={selectedHistoryId}
                 />
               </div>
             </div>
 
-            {/* Bottom matrix */}
-            <div className="h-[175px] shrink-0 bg-white border border-slate-200/50 rounded-xl p-3 shadow-sm flex flex-col justify-center overflow-x-auto scrollbar-none">
-              <EffectEvaluationBottom
-                isCaseMode={isCaseMode}
-                playbackMinutes={playbackMinutes}
-                setPlaybackMinutes={setPlaybackMinutes}
-                isPlaying={isPlaying}
-                setIsPlaying={setIsPlaying}
-                selectedHistoryId={selectedHistoryId}
+            {/* Column 4: Rightmost Full-Height Panel (Historical Operation Information List) */}
+            <div className="w-[280px] shrink-0 flex flex-col h-full bg-white border border-slate-200/50 rounded-xl p-3 shadow-sm overflow-hidden">
+              <EffectEvaluationHistoryList 
+                selectedHistoryId={selectedHistoryId} 
+                setSelectedHistoryId={setSelectedHistoryId} 
+                isCaseMode={isCaseMode} 
+                activeCaseId={activeCaseId} 
               />
             </div>
           </div>
-
-          {/* Column 3: Right Panel with History list on top and Radar statistical changes at bottom */}
-          <div className="w-[380px] shrink-0 flex flex-col gap-3 h-full overflow-hidden">
-            {/* Historical operation list (top) */}
-            <div className="flex-1 min-h-0 bg-white border border-slate-200/50 rounded-xl p-3.5 flex flex-col shadow-sm overflow-hidden">
-              <EffectEvaluationHistoryList selectedHistoryId={selectedHistoryId} setSelectedHistoryId={setSelectedHistoryId} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
+        ) : (
+          /* Standard 3-Column Layout for Real-Time Mode & Other Cases */
+          <div className="absolute top-16 left-0 right-0 bottom-0 bg-[#f1f5f9] flex p-3 gap-3 overflow-hidden select-none z-30 animate-fade-in">
+            {/* Column 1: Left Panel */}
+            <div className="w-[360px] shrink-0 flex flex-col gap-3 h-full">
+              <EffectEvaluationLeft activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
             </div>
-            {/* Radar reflectivity statistical changes (bottom) */}
-            <div className="h-[240px] shrink-0">
-              <RadarReflectivityStatChange selectedHistoryId={selectedHistoryId} isCaseMode={isCaseMode} />
+
+            {/* Column 2: Center Map + Bottom Matrix */}
+            <div className="flex-1 flex flex-col gap-3 min-h-0 min-w-0">
+              {/* Map Box */}
+              <div className="flex-1 bg-white border border-slate-200/50 rounded-xl flex flex-col shadow-sm relative min-w-0 overflow-hidden">
+                <div className="flex-1 relative overflow-hidden bg-slate-50">
+                  <Map3D 
+                    activeRegion={activeRegion} 
+                    onPointClick={setSelectedPoint} 
+                    isCaseMode={isCaseMode} 
+                    playbackMinutes={playbackMinutes} 
+                    normalMinutes={normalMinutes}
+                    activeNav={activeNav} 
+                    selectedHistoryId={selectedHistoryId}
+                    activeCaseId={activeCaseId}
+                  />
+                  <BottomPanel 
+                    activeNav={activeNav}
+                    isCaseMode={isCaseMode}
+                    playbackMinutes={playbackMinutes}
+                    setPlaybackMinutes={setPlaybackMinutes}
+                    isPlaying={isPlaying}
+                    setIsPlaying={setIsPlaying}
+                    playbackSpeed={playbackSpeed}
+                    setPlaybackSpeed={setPlaybackSpeed}
+                    normalMinutes={normalMinutes}
+                    setNormalMinutes={setNormalMinutes}
+                    normalIsPlaying={normalIsPlaying}
+                    setNormalIsPlaying={setNormalIsPlaying}
+                    variant="inline"
+                    selectedHistoryId={selectedHistoryId}
+                  />
+                </div>
+              </div>
+
+              {/* Bottom matrix */}
+              <div className="h-[175px] shrink-0 bg-white border border-slate-200/50 rounded-xl p-3 shadow-sm flex flex-col justify-center overflow-x-auto scrollbar-none">
+                <EffectEvaluationBottom
+                  isCaseMode={isCaseMode}
+                  playbackMinutes={playbackMinutes}
+                  setPlaybackMinutes={setPlaybackMinutes}
+                  isPlaying={isPlaying}
+                  setIsPlaying={setIsPlaying}
+                  selectedHistoryId={selectedHistoryId}
+                />
+              </div>
+            </div>
+
+            {/* Column 3: Right Panel with History list on top and Radar statistical changes at bottom */}
+            <div className="w-[380px] shrink-0 flex flex-col gap-3 h-full overflow-hidden">
+              {/* Historical operation list (top) */}
+              <div className="flex-1 min-h-0 bg-white border border-slate-200/50 rounded-xl p-3.5 flex flex-col shadow-sm overflow-hidden">
+                <EffectEvaluationHistoryList selectedHistoryId={selectedHistoryId} setSelectedHistoryId={setSelectedHistoryId} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
+              </div>
+              {/* Radar reflectivity statistical changes (bottom) */}
+              <div className="h-[240px] shrink-0">
+                <RadarReflectivityStatChange selectedHistoryId={selectedHistoryId} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
+              </div>
             </div>
           </div>
-        </div>
+        )
       )}
 
       {activeNav === '装备管理' && (
@@ -245,6 +364,7 @@ export default function App() {
 
       {activeNav !== '效果评估' && activeNav !== '装备管理' && (
         <BottomPanel 
+          activeNav={activeNav}
           isCaseMode={isCaseMode}
           playbackMinutes={playbackMinutes}
           setPlaybackMinutes={setPlaybackMinutes}

@@ -74,7 +74,7 @@ export default function Header({
       <div className="flex items-center justify-end gap-4 max-w-[500px] shrink-0">
         
         {/* Case Selector Dropdown */}
-        {isCaseMode && activeNav !== '监测预警' && activeNav !== '装备管理' && (
+        {(isCaseMode || activeNav === '效果评估') && activeNav !== '监测预警' && activeNav !== '装备管理' && (
           <div className="relative animate-fade-in flex items-center">
             <select
               value={activeCaseId}
@@ -88,8 +88,8 @@ export default function Header({
           </div>
         )}
 
-        {/* Real-time / Case Study Mode Switcher */}
-        {activeNav !== '监测预警' && activeNav !== '装备管理' && (
+        {/* Real-time / Case Study Mode Switcher (only shown for 作业指挥) */}
+        {activeNav !== '监测预警' && activeNav !== '装备管理' && activeNav !== '效果评估' && (
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
             <button
               onClick={() => onModeChange(false)}

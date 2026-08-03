@@ -153,6 +153,117 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false,
 
   return (
     <>
+      <EffectEvaluationLeftScopeAndStats activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
+      <EffectEvaluationLeftTable activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
+    </>
+  );
+}
+
+export function EffectEvaluationLeftScopeAndStats({ activeRegion, isCaseMode = false, activeCaseId = '2026-06-18' }: LeftProps) {
+  const [selectedProvince, setSelectedProvince] = useState<string>('湖北');
+  const [selectedCity, setSelectedCity] = useState<string>('全省');
+  const [startTime, setStartTime] = useState('2026-07-02 12:00');
+  const [endTime, setEndTime] = useState('2026-07-02 21:00');
+
+  React.useEffect(() => {
+    if (isCaseMode) {
+      if (activeCaseId === '2026-07-02') {
+        setStartTime('2026-07-02 12:00');
+        setEndTime('2026-07-02 21:00');
+      } else {
+        setStartTime('2026-06-18 14:00');
+        setEndTime('2026-06-18 18:00');
+      }
+    } else {
+      setStartTime('2026-07-07 12:00');
+      setEndTime('2026-07-07 21:00');
+    }
+  }, [isCaseMode, activeCaseId]);
+
+  React.useEffect(() => {
+    if (isCaseMode) {
+      if (activeCaseId === '2026-07-02') {
+        setSelectedProvince('江苏');
+        setSelectedCity('南京市');
+      } else {
+        setSelectedProvince('湖北');
+        setSelectedCity('黄石市');
+      }
+    } else {
+      if (activeRegion === '江苏地块') {
+        setSelectedProvince('江苏');
+        setSelectedCity('南京市');
+      } else {
+        setSelectedProvince('湖北');
+        setSelectedCity('黄石市');
+      }
+    }
+  }, [isCaseMode, activeCaseId, activeRegion]);
+
+  const liveChartData = [
+    { time: '12:00', rocketOps: 1, rocketAmmo: 8, gunOps: 2, gunAmmo: 25 },
+    { time: '13:00', rocketOps: 2, rocketAmmo: 16, gunOps: 1, gunAmmo: 12 },
+    { time: '14:00', rocketOps: 0, rocketAmmo: 0, gunOps: 3, gunAmmo: 30 },
+    { time: '15:00', rocketOps: 3, rocketAmmo: 24, gunOps: 0, gunAmmo: 0 },
+    { time: '16:00', rocketOps: 1, rocketAmmo: 8, gunOps: 2, gunAmmo: 20 },
+    { time: '17:00', rocketOps: 2, rocketAmmo: 16, gunOps: 1, gunAmmo: 10 },
+    { time: '18:00', rocketOps: 1, rocketAmmo: 8, gunOps: 1, gunAmmo: 15 },
+  ];
+
+  const caseChartData = [
+    { time: '14:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
+    { time: '15:00', rocketOps: 2, rocketAmmo: 8, gunOps: 0, gunAmmo: 0 },
+    { time: '16:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
+    { time: '17:00', rocketOps: 1, rocketAmmo: 4, gunOps: 0, gunAmmo: 0 },
+    { time: '18:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
+  ];
+
+  const nanjingChartData = [
+    { time: '14:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
+    { time: '15:00', rocketOps: 1, rocketAmmo: 8, gunOps: 2, gunAmmo: 75 },
+    { time: '16:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
+    { time: '17:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
+    { time: '18:00', rocketOps: 0, rocketAmmo: 0, gunOps: 0, gunAmmo: 0 },
+  ];
+
+  const chartData = isCaseMode 
+    ? (activeCaseId === '2026-07-02' ? nanjingChartData : caseChartData) 
+    : liveChartData;
+
+  let totalOps = 0;
+  let successOps = 0;
+  let gunOpsCount = 0;
+  let gunAmmoCount = 0;
+  let rocketOpsCount = 0;
+  let rocketAmmoCount = 0;
+
+  if (!isCaseMode) {
+    liveChartData.forEach(item => {
+      rocketOpsCount += item.rocketOps;
+      rocketAmmoCount += item.rocketAmmo;
+      gunOpsCount += item.gunOps;
+      gunAmmoCount += item.gunAmmo;
+    });
+    totalOps = rocketOpsCount + gunOpsCount;
+    successOps = 18;
+  } else if (activeCaseId === '2026-07-02') {
+    rocketOpsCount = 1;
+    rocketAmmoCount = 8;
+    gunOpsCount = 2;
+    gunAmmoCount = 75;
+    totalOps = rocketOpsCount + gunOpsCount;
+    successOps = totalOps;
+  } else {
+    rocketOpsCount = 3;
+    rocketAmmoCount = 12;
+    gunOpsCount = 0;
+    gunAmmoCount = 0;
+    totalOps = rocketOpsCount + gunOpsCount;
+    successOps = totalOps;
+  }
+
+  return (
+    <div className="flex flex-col gap-3 shrink-0">
       {/* 1. 作业范围 (Operation Scope) */}
       <div className="bg-gradient-to-b from-slate-50/80 to-white border-l-4 border-l-indigo-500 border-y border-r border-slate-200/60 rounded-r-xl rounded-l-none p-3 flex flex-col gap-2.5 shadow-sm shrink-0">
         <div className="flex items-center justify-between">
@@ -162,9 +273,7 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false,
           </div>
         </div>
 
-        {/* Side-by-side select dropdowns */}
         <div className="grid grid-cols-2 gap-2">
-          {/* Province selection dropdown */}
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">选择省份</span>
             <select
@@ -181,7 +290,6 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false,
             </select>
           </div>
 
-          {/* City selection dropdown */}
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">选择市/区域</span>
             <select
@@ -209,7 +317,6 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false,
           </div>
         </div>
 
-        {/* Date Time Inputs */}
         <div className="grid grid-cols-2 gap-2">
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-slate-400">起始时间</span>
@@ -238,8 +345,8 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false,
         </div>
       </div>
 
-      {/* 2. 作业信息统计 (Operation Stats - Replicated exactly from OperationCommandLeft UI layout) */}
-      <div className="bg-gradient-to-b from-slate-50/80 to-white border-l-4 border-l-indigo-500 border-y border-r border-slate-200/60 rounded-r-xl rounded-l-none p-3 flex flex-col gap-3 shadow-sm shrink-0">
+      {/* 2. 作业信息统计 (Operation Stats) */}
+      <div className="bg-gradient-to-b from-slate-50/80 to-white border-l-4 border-l-indigo-500 border-y border-r border-slate-200/60 rounded-r-xl rounded-l-none p-3 flex flex-col gap-2.5 shadow-sm shrink-0">
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-indigo-500 shrink-0" />
@@ -248,7 +355,7 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false,
         </div>
         
         <div className="flex gap-2 shrink-0">
-          <div className="flex-1 flex items-center justify-between bg-gradient-to-br from-blue-50/50 to-white rounded-lg p-2 border border-blue-100 shadow-sm">
+          <div className="flex-1 flex items-center justify-between bg-gradient-to-br from-blue-50/50 to-white rounded-lg p-1.5 border border-blue-100 shadow-sm">
             <div className="text-[10px] font-bold text-slate-700 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
               火箭
@@ -258,7 +365,7 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false,
               <div className="text-[10px] text-blue-600 font-medium"><span className="font-bold font-mono text-xs">{rocketAmmoCount}</span> 发</div>
             </div>
           </div>
-          <div className="flex-1 flex items-center justify-between bg-gradient-to-br from-emerald-50/50 to-white rounded-lg p-2 border border-emerald-100 shadow-sm">
+          <div className="flex-1 flex items-center justify-between bg-gradient-to-br from-emerald-50/50 to-white rounded-lg p-1.5 border border-emerald-100 shadow-sm">
             <div className="text-[10px] font-bold text-slate-700 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               高炮
@@ -270,7 +377,7 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false,
           </div>
         </div>
         
-        <div className="w-full h-[160px] relative mt-1 shrink-0">
+        <div className="w-full h-[150px] relative mt-0.5 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }} barGap={2} barCategoryGap="25%">
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -292,69 +399,109 @@ export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false,
           </ResponsiveContainer>
         </div>
 
-        {/* 作业总结内容嵌入到图表下方 */}
-        <div className="bg-slate-50 border border-slate-100 p-3 rounded-lg text-xs text-slate-600 leading-relaxed font-sans shrink-0">
-          当前统计时段内共作业 <span className="font-bold text-blue-600">{totalOps}</span> 次，
+        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-xs text-slate-600 leading-relaxed font-sans shrink-0">
+          本次作业共作业 <span className="font-bold text-blue-600">{totalOps}</span> 次，
           成功完成作业 <span className="font-bold text-emerald-600">{successOps}</span> 次，
           其中高炮作业 <span className="font-bold text-slate-800">{gunOpsCount}</span> 次，
-          发射高炮共 <span className="font-bold text-slate-800">{gunAmmoCount}</span> 发;
+          发射高炮弹共 <span className="font-bold text-slate-800">{gunAmmoCount}</span> 发;
           火箭作业 <span className="font-bold text-slate-800">{rocketOpsCount}</span> 次，
           发射火箭弹共 <span className="font-bold text-slate-800">{rocketAmmoCount}</span> 发。
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* 3. 作业点列表 (Operation Points Table) */}
-      <div className="bg-gradient-to-b from-slate-50/80 to-white border-l-4 border-l-indigo-500 border-y border-r border-slate-200/60 rounded-r-xl rounded-l-none p-3.5 flex flex-col gap-3 shadow-sm flex-1 min-h-0">
-        <div className="flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <LineChart className="w-4 h-4 text-indigo-500 shrink-0" />
-            <h3 className="text-xs font-bold text-slate-800">作业点效果统计</h3>
-          </div>
-        </div>
+export function EffectEvaluationLeftTable({ activeRegion, isCaseMode = false, activeCaseId = '2026-06-18' }: LeftProps) {
+  let tableData = [
+    { name: '大冶金湖', type: '火箭', rational: '合理', status: '有效', radarChange: '-52%' },
+    { name: '刘仁八', type: '火箭', rational: '合理', status: '有效', radarChange: '-48%' },
+    { name: '白沙', type: '火箭', rational: '合理', status: '有效', radarChange: '-55%' }
+  ];
 
-        <div className="overflow-y-auto border border-slate-200 rounded-lg flex-1 scrollbar-none relative">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-indigo-50/60 border-b border-indigo-100 text-indigo-700/80 font-bold select-none">
-                <th className="px-3 py-2">作业点</th>
-                <th className="px-2 py-2">类型</th>
-                <th className="px-2 py-2">合理性</th>
-                <th className="px-2 py-2">有效性</th>
-                <th className="px-3 py-2 text-right">变化率</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-              {tableData.map((row, i) => (
-                <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-3 py-2.5 font-bold">{row.name}</td>
-                  <td className="px-2 py-2.5">
-                    <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-blue-50 text-blue-600 border border-blue-100">
-                      {row.type}
-                    </span>
-                  </td>
-                  <td className="px-2 py-2.5">
-                    <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
-                      row.rational === '合理' 
-                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                        : 'bg-orange-50 text-orange-600 border border-orange-100'
-                    }`}>
-                      {row.rational}
-                    </span>
-                  </td>
-                  <td className="px-2 py-2.5">
-                    <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-50 text-emerald-600 border border-emerald-100">
-                      {row.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono font-bold text-emerald-600">
-                    {row.radarChange}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+  if (isCaseMode) {
+    if (activeCaseId === '2026-07-02') {
+      tableData = [
+        { name: '三道沟', type: '火箭', rational: '合理', status: '有效', radarChange: '-58%' },
+        { name: '太平庄', type: '高炮', rational: '合理', status: '有效', radarChange: '-50%' },
+        { name: '大杨树', type: '高炮', rational: '合理', status: '有效', radarChange: '-45%' },
+      ];
+    } else {
+      tableData = [
+        { name: '大冶金湖', type: '火箭', rational: '合理', status: '有效', radarChange: '-52%' },
+        { name: '刘仁八', type: '火箭', rational: '合理', status: '有效', radarChange: '-48%' },
+        { name: '白沙', type: '火箭', rational: '合理', status: '有效', radarChange: '-55%' }
+      ];
+    }
+  } else {
+    if (activeRegion === '江苏地块') {
+      tableData = [
+        { name: '三道沟', type: '火箭', rational: '合理', status: '有效', radarChange: '-58%' },
+        { name: '太平庄', type: '高炮', rational: '合理', status: '有效', radarChange: '-50%' },
+        { name: '大杨树', type: '高炮', rational: '合理', status: '有效', radarChange: '-45%' },
+      ];
+    } else {
+      tableData = [
+        { name: '大冶金湖', type: '火箭', rational: '合理', status: '有效', radarChange: '-52%' },
+        { name: '刘仁八', type: '火箭', rational: '合理', status: '有效', radarChange: '-48%' },
+        { name: '姜祥村', type: '高炮', rational: '合理', status: '有效', radarChange: '-40%' },
+        { name: '铁山南', type: '高炮', rational: '合理', status: '有效', radarChange: '-42%' },
+        { name: '沿湖生态园', type: '高炮', rational: '合理', status: '有效', radarChange: '-44%' },
+      ];
+    }
+  }
+
+  return (
+    <div className="w-full h-full bg-gradient-to-b from-slate-50/80 to-white border-l-4 border-l-indigo-500 border-y border-r border-slate-200/60 rounded-r-xl rounded-l-none p-2.5 flex flex-col gap-2 shadow-sm min-h-0 overflow-hidden">
+      <div className="flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <LineChart className="w-4 h-4 text-indigo-500 shrink-0" />
+          <h3 className="text-xs font-bold text-slate-800">作业点效果统计</h3>
         </div>
       </div>
-    </>
+
+      <div className="overflow-y-auto border border-slate-200 rounded-lg flex-1 scrollbar-none relative">
+        <table className="w-full text-left text-xs border-collapse">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-indigo-50/60 border-b border-indigo-100 text-indigo-700/80 font-bold select-none">
+              <th className="px-2.5 py-1.5">作业点</th>
+              <th className="px-1.5 py-1.5">类型</th>
+              <th className="px-1.5 py-1.5">合理性</th>
+              <th className="px-1.5 py-1.5">有效性</th>
+              <th className="px-2.5 py-1.5 text-right">变化率</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+            {tableData.map((row, i) => (
+              <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                <td className="px-2.5 py-2 font-bold">{row.name}</td>
+                <td className="px-1.5 py-2">
+                  <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-blue-50 text-blue-600 border border-blue-100">
+                    {row.type}
+                  </span>
+                </td>
+                <td className="px-1.5 py-2">
+                  <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
+                    row.rational === '合理' 
+                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                      : 'bg-orange-50 text-orange-600 border border-orange-100'
+                  }`}>
+                    {row.rational}
+                  </span>
+                </td>
+                <td className="px-1.5 py-2">
+                  <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-50 text-emerald-600 border border-emerald-100">
+                    {row.status}
+                  </span>
+                </td>
+                <td className="px-2.5 py-2 text-right font-mono font-bold text-emerald-600">
+                  {row.radarChange}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

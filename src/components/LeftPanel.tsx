@@ -238,10 +238,10 @@ export function isProductOverlayable(subCatName: string, productName: string): b
 }
 
 // Module-level cache to persist selection state across component unmounts/remounts (e.g., when switching top navigation tabs)
-let cachedActiveMain = 'radar';
-let cachedExpandedSubCats: string[] = [];
-export let cachedSelectedProductKeys: string[] = [];
-export let cachedSelectedProductKey: string | null = null;
+export let cachedActiveMain = 'radar';
+let cachedExpandedSubCats: string[] = ['雷达实况'];
+export let cachedSelectedProductKeys: string[] = ['radar|雷达实况|全国组网组合反射率'];
+export let cachedSelectedProductKey: string | null = 'radar|雷达实况|全国组网组合反射率';
 let cachedIsPopupOpen = true;
 
 export default function LeftPanel({ activeRegion, setActiveRegion }: LeftPanelProps) {

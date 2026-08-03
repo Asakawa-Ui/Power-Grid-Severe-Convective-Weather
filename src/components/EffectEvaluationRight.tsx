@@ -113,14 +113,16 @@ function getDynamicTimeRange(baseTimeStr: string) {
 
 interface RightChartsProps {
   selectedHistoryId?: string;
+  setSelectedHistoryId?: (id: string) => void;
   isCaseMode?: boolean;
+  activeCaseId?: string;
 }
 
-export function EffectEvaluationRightCharts({ selectedHistoryId = 'h1', isCaseMode = false }: RightChartsProps) {
+export function EffectEvaluationRightCharts({ selectedHistoryId = 'h1', setSelectedHistoryId, isCaseMode = false, activeCaseId = '2026-06-18' }: RightChartsProps) {
   const [activeTab1, setActiveTab1] = useState<string>('反射率因子');
   const [activeTab2, setActiveTab2] = useState<string>('反射率因子');
 
-  const siteDetails = getHistorySiteDetails(selectedHistoryId, isCaseMode);
+  const siteDetails = getHistorySiteDetails(selectedHistoryId, isCaseMode, activeCaseId);
   const startTimeStr = siteDetails.date.split(' ')[1] || '17:00';
   const dynamicTimes = getDynamicTimeRange(startTimeStr);
 
@@ -252,11 +254,9 @@ export function EffectEvaluationRightCharts({ selectedHistoryId = 'h1', isCaseMo
             <span className="w-1.5 h-3 bg-blue-600 rounded-full" />
             作业轨迹雷达剖面 ({siteDetails.location})
           </h4>
-          <div className="flex items-center gap-1.5">
-            <span className="px-2 py-0.5 text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded">
-              作业合理性: {siteDetails.status}
-            </span>
-          </div>
+          <span className="px-2 py-0.5 text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded">
+            作业合理性: {siteDetails.status}
+          </span>
         </div>
 
         {/* Profile SVG Area */}
@@ -632,8 +632,8 @@ export function EffectEvaluationRightCharts({ selectedHistoryId = 'h1', isCaseMo
   );
 }
 
-export function RadarReflectivityStatChange({ selectedHistoryId = 'h1', isCaseMode = false }: { selectedHistoryId?: string; isCaseMode?: boolean }) {
-  const siteDetails = getHistorySiteDetails(selectedHistoryId, isCaseMode);
+export function RadarReflectivityStatChange({ selectedHistoryId = 'h1', isCaseMode = false, activeCaseId = '2026-06-18' }: { selectedHistoryId?: string; isCaseMode?: boolean; activeCaseId?: string }) {
+  const siteDetails = getHistorySiteDetails(selectedHistoryId, isCaseMode, activeCaseId);
   const startTimeStr = siteDetails.date.split(' ')[1] || '17:00';
   const dynamicTimes = getDynamicTimeRange(startTimeStr);
 
@@ -796,34 +796,11 @@ interface HistoryListProps {
 
 export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHistoryId, isCaseMode = false, activeCaseId = '2026-06-18' }: HistoryListProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(4);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const itemsPerPage = 5;
 
   const activeHistoryData = isCaseMode 
     ? (activeCaseId === '2026-07-02' ? nanjingHistoryData : caseHistoryData)
     : liveHistoryData;
-
-  useEffect(() => {
-    const updateItemsPerPage = () => {
-      if (containerRef.current) {
-        // Height of the list container. 
-        // Card height is approx 115px + gap 10px = 125px.
-        const containerHeight = containerRef.current.clientHeight;
-        const calculatedItems = Math.max(1, Math.floor(containerHeight / 125));
-        setItemsPerPage(calculatedItems);
-      }
-    };
-
-    const observer = new ResizeObserver(() => {
-      updateItemsPerPage();
-    });
-
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   const totalPages = Math.ceil(activeHistoryData.length / itemsPerPage);
   // Ensure current page is valid when total pages change
@@ -836,10 +813,10 @@ export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHist
   const currentData = activeHistoryData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
-    <div className="w-full h-full flex flex-col gap-3 overflow-hidden">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 shrink-0">
-        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <span className="w-1.5 h-4 bg-blue-600 rounded-full" />
+    <div className="w-full h-full flex flex-col gap-2.5 overflow-hidden">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-2 shrink-0">
+        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+          <span className="w-1.5 h-3.5 bg-blue-600 rounded-full" />
           历史作业信息
         </h3>
         <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
@@ -847,8 +824,8 @@ export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHist
         </span>
       </div>
 
-      {/* Scrollable list of cards styled exactly like operational commands */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1 -mr-1 scrollbar-none">
+      {/* Scrollable list of cards with max-height and smooth vertical scrolling */}
+      <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1 -mr-1 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent hover:scrollbar-thumb-slate-300">
         {currentData.map((card, index) => {
           const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
           const isSelected = selectedHistoryId === card.id;
@@ -865,53 +842,53 @@ export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHist
             <div
               key={card.id}
               onClick={() => setSelectedHistoryId(card.id)}
-              className={`p-2.5 rounded-lg cursor-pointer border transition-all flex flex-col gap-1.5 ${
+              className={`p-2 rounded-lg cursor-pointer border transition-all flex flex-col gap-1 shrink-0 ${
                 isSelected
-                  ? 'border-blue-500 bg-gradient-to-r from-blue-50/50 to-white shadow-md ring-1 ring-blue-300'
-                  : 'border-slate-100 bg-gradient-to-r from-slate-50 to-white hover:border-slate-200 hover:shadow-md shadow-sm'
+                  ? 'border-blue-500 bg-gradient-to-r from-blue-50/50 to-white shadow-sm ring-1 ring-blue-300'
+                  : 'border-slate-100 bg-gradient-to-r from-slate-50 to-white hover:border-slate-200 hover:shadow-sm shadow-xs'
               }`}
             >
               {/* Header */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-400 w-4 text-right">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-slate-400 w-3.5 text-right">
                     {globalIndex}.
                   </span>
-                  <span className={`px-2 py-0.5 text-[10px] font-bold text-white rounded-md shadow-sm ${
+                  <span className={`px-1.5 py-0.5 text-[9px] font-bold text-white rounded shadow-xs ${
                     card.type === '火箭' ? 'bg-orange-500' : 'bg-blue-500'
                   }`}>
                     {card.type}
                   </span>
-                  <span className="text-sm font-bold text-slate-700 ml-0.5">{card.location}</span>
+                  <span className="text-xs font-bold text-slate-800 ml-0.5">{card.location}</span>
                 </div>
               </div>
 
               {/* Time */}
-              <div className="flex items-center gap-1.5 px-1 text-[11px] text-slate-600">
-                <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <div className="flex items-center gap-1 px-0.5 text-[10px] text-slate-600">
+                <Clock className="w-3 h-3 text-blue-500 shrink-0" />
                 <span className="font-medium">时间: <span className="font-mono">{fullTimeRange}</span></span>
               </div>
 
               {/* Location */}
-              <div className="flex items-center gap-1.5 px-1 text-[11px] text-slate-600">
-                <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                <span className="font-medium">
+              <div className="flex items-center gap-1 px-0.5 text-[10px] text-slate-600">
+                <MapPin className="w-3 h-3 text-blue-500 shrink-0" />
+                <span className="font-medium truncate">
                   地点: {getAdministrativeAddress(card.location)}
                 </span>
               </div>
 
-              {/* Action parameter details in single line layout with blue Lucide-react icons */}
-              <div className="flex items-center justify-between px-1 text-slate-600 text-[11px]">
-                <div className="flex items-center gap-1.5">
-                  <Rocket className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              {/* Action parameter details */}
+              <div className="flex items-center justify-between px-0.5 text-slate-600 text-[10px]">
+                <div className="flex items-center gap-1">
+                  <Rocket className="w-3 h-3 text-blue-500 shrink-0" />
                   <span className="font-medium">用量: {card.ammo}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <ArrowUpRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <div className="flex items-center gap-1">
+                  <ArrowUpRight className="w-3 h-3 text-blue-500 shrink-0" />
                   <span className="font-medium">仰角: {card.angle}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Navigation className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <div className="flex items-center gap-1">
+                  <Navigation className="w-3 h-3 text-blue-500 shrink-0" />
                   <span className="font-medium">方位: <span className="font-mono">{card.azimuth}</span></span>
                 </div>
               </div>
@@ -922,7 +899,7 @@ export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHist
       
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100 shrink-0">
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 shrink-0">
           <span className="text-[10px] text-slate-500 font-medium">
             第 {currentPage} 页 / 共 {totalPages} 页
           </span>
@@ -932,14 +909,14 @@ export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHist
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               className="p-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-3 h-3" />
             </button>
             <button
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               className="p-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-3 h-3" />
             </button>
           </div>
         </div>

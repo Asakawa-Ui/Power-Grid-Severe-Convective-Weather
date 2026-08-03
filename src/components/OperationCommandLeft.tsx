@@ -271,7 +271,7 @@ export default function OperationCommandLeft({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="text-[10px] text-emerald-600 font-bold">在线就绪</span>
+              <span className="text-[10px] text-emerald-600 font-bold">就绪</span>
             </div>
           )}
         </div>
@@ -404,32 +404,32 @@ export default function OperationCommandLeft({
             }}
             className="flex-1 flex flex-col gap-2 min-h-0 cursor-pointer hover:opacity-95 transition-all animate-fade-in"
           >
-            <div className="grid grid-cols-2 gap-x-2.5 gap-y-1.5 text-[11px] bg-slate-50/50 border border-slate-100 rounded-lg p-2.5">
+            <div className="grid grid-cols-2 gap-x-2.5 gap-y-1 text-[11px] bg-slate-50/50 border border-slate-100 rounded-lg p-2.5">
               <div className="flex items-center col-span-2 border-b border-slate-100/50 pb-1">
-                <span className="w-[54px] text-slate-400 font-medium shrink-0">站点名称:</span>
+                <span className="w-[60px] text-slate-400 font-medium shrink-0">站点名称:</span>
                 <span className="text-slate-800 font-bold text-[11.5px]">姜祥村作业点</span>
               </div>
               <div className="flex items-center col-span-2 border-b border-slate-100/50 pb-1">
-                <span className="w-[54px] text-slate-400 font-medium shrink-0">站点编号:</span>
+                <span className="w-[60px] text-slate-400 font-medium shrink-0">站点编号:</span>
                 <span className="text-slate-800 font-mono font-medium">1301270001</span>
               </div>
               <div className="flex items-center col-span-2 border-b border-slate-100/50 pb-1">
-                <span className="w-[54px] text-slate-400 font-medium shrink-0">详细地址:</span>
+                <span className="w-[60px] text-slate-400 font-medium shrink-0">所属区域:</span>
+                <span className="text-slate-700 font-medium">湖北省黄石市大冶市</span>
+              </div>
+              <div className="flex items-center col-span-2 border-b border-slate-100/50 pb-1">
+                <span className="w-[60px] text-slate-400 font-medium shrink-0">详细地址:</span>
                 <span className="text-slate-700 font-medium truncate" title="湖北省黄石市大冶市金牛镇姜祥村">
                   湖北省黄石市大冶市金牛镇姜祥村
                 </span>
               </div>
               <div className="flex items-center border-b border-slate-100/50 pb-1">
-                <span className="w-[54px] text-slate-400 font-medium shrink-0">装备类型:</span>
-                <span className="text-slate-700 font-medium">固定火箭点</span>
+                <span className="w-[60px] text-slate-400 font-medium shrink-0">作业器具:</span>
+                <span className="text-slate-800 font-bold text-blue-600">火箭弹</span>
               </div>
               <div className="flex items-center border-b border-slate-100/50 pb-1">
-                <span className="w-[54px] text-slate-400 font-medium shrink-0">装备型号:</span>
-                <span className="text-slate-700 font-medium font-mono">WR-98型</span>
-              </div>
-              <div className="flex items-center col-span-2">
-                <span className="w-[54px] text-slate-400 font-medium shrink-0">库存储备:</span>
-                <span className="text-slate-800 font-bold text-blue-600">火箭弹 24发 (状态良好)</span>
+                <span className="w-[60px] text-slate-400 font-medium shrink-0">弹药库存:</span>
+                <span className="text-slate-800 font-bold text-emerald-600">24发</span>
               </div>
             </div>
 

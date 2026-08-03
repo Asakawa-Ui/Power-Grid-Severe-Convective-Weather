@@ -7,6 +7,17 @@ import { powerLines } from '../utils/powerLines';
 import { weatherPoints, WeatherPoint } from '../utils/weatherPoints';
 import { warningAreas } from "../utils/warningAreas";
 import { getHistorySiteDetails } from './EffectEvaluationRight';
+import geo420000 from '../../public/geo/420000.json';
+import geo320000 from '../../public/geo/320000.json';
+import geo340000 from '../../public/geo/340000.json';
+import geo510000 from '../../public/geo/510000.json';
+
+const localGeoMap: Record<string, any> = {
+  '420000': geo420000,
+  '320000': geo320000,
+  '340000': geo340000,
+  '510000': geo510000
+};
 
 const TDT_KEYS = [
   '1d3ede6b2f0e89e9eed057f2424239a3',
@@ -39,6 +50,112 @@ const createTdtSource = (layerCode: string) => ({
   tileSize: 256,
   attribution: '&copy; <a href="https://www.tianditu.gov.cn/">天地图</a>',
 });
+
+export const createSitePopupHTML = (wp: WeatherPoint) => {
+  const name = wp.name;
+  let siteName = name.endsWith('作业点') ? name : `${name}作业点`;
+  let siteCode = '1301270001';
+  let region = '湖北省黄石市大冶市';
+  let address = '湖北省黄石市大冶市金牛镇姜祥村';
+  let equipment = wp.type === 'gun' ? '高炮' : '火箭弹';
+  let inventory = '24发';
+
+  if (name.includes('姜祥村')) {
+    siteCode = '1301270001';
+    region = '湖北省黄石市大冶市';
+    address = '湖北省黄石市大冶市金牛镇姜祥村';
+    equipment = '火箭弹';
+    inventory = '24发';
+  } else if (name.includes('金湖') || name.includes('大冶金湖')) {
+    siteCode = '1301270002';
+    region = '湖北省黄石市大冶市';
+    address = '湖北省黄石市大冶市金湖街道金湖大道';
+    equipment = '火箭弹';
+    inventory = '18发';
+  } else if (name.includes('刘仁八')) {
+    siteCode = '1301270003';
+    region = '湖北省黄石市大冶市';
+    address = '湖北省黄石市大冶市刘仁八镇刘仁八村';
+    equipment = '火箭弹';
+    inventory = '24发';
+  } else if (name.includes('铁山南')) {
+    siteCode = '1301270004';
+    region = '湖北省黄石市铁山区';
+    address = '湖北省黄石市铁山区铁山南路28号';
+    equipment = '高炮';
+    inventory = '120发';
+  } else if (name.includes('沿湖生态园')) {
+    siteCode = '1301270005';
+    region = '湖北省黄石市大冶市';
+    address = '湖北省黄石市大冶市沿湖生态园内';
+    equipment = '火箭弹';
+    inventory = '16发';
+  } else if (name.includes('白沙')) {
+    siteCode = '1301270006';
+    region = '湖北省黄石市大冶市';
+    address = '湖北省黄石市大冶市白沙镇白沙村';
+    equipment = '火箭弹';
+    inventory = '24发';
+  } else if (name.includes('太子')) {
+    siteCode = '1301270007';
+    region = '湖北省黄石市大冶市';
+    address = '湖北省黄石市大冶市太子镇太子村';
+    equipment = '火箭弹';
+    inventory = '20发';
+  } else {
+    const numMatch = wp.id.match(/\d+/);
+    const num = numMatch ? parseInt(numMatch[0], 10) : 1;
+    siteCode = `130127${String(num).padStart(4, '0')}`;
+
+    if (wp.region === '四川地块') {
+      region = '四川省成都市龙泉驿区';
+      address = `四川省成都市龙泉驿区${name}`;
+    } else if (wp.region === '安徽地块') {
+      region = '安徽省合肥市蜀山区';
+      address = `安徽省合肥市蜀山区${name}`;
+    } else if (wp.region === '江苏地块') {
+      region = '江苏省南京市玄武区';
+      address = `江苏省南京市玄武区${name}`;
+    } else {
+      region = '湖北省十堰市茅箭区';
+      address = `湖北省十堰市茅箭区${name}`;
+    }
+    equipment = wp.type === 'gun' ? '高炮' : '火箭弹';
+    inventory = wp.type === 'gun' ? '120发' : '24发';
+  }
+
+  return `
+    <div class="p-2 font-sans text-xs text-slate-700 min-w-[200px] max-w-[250px] select-text">
+      <div class="space-y-1.5 text-[11.5px] leading-snug">
+        <div class="flex items-start">
+          <span class="text-slate-400 w-[60px] shrink-0 font-medium">站点名称:</span>
+          <span class="text-slate-800 font-semibold">${siteName}</span>
+        </div>
+        <div class="flex items-center">
+          <span class="text-slate-400 w-[60px] shrink-0 font-medium">站点编号:</span>
+          <span class="text-slate-800 font-mono font-medium">${siteCode}</span>
+        </div>
+        <div class="flex items-start">
+          <span class="text-slate-400 w-[60px] shrink-0 font-medium">所属区域:</span>
+          <span class="text-slate-800 font-medium">${region}</span>
+        </div>
+        <div class="flex items-start">
+          <span class="text-slate-400 w-[60px] shrink-0 font-medium">详细地址:</span>
+          <span class="text-slate-800 font-medium break-all">${address}</span>
+        </div>
+        <div class="flex items-center">
+          <span class="text-slate-400 w-[60px] shrink-0 font-medium">作业器具:</span>
+          <span class="text-slate-800 font-medium">${equipment}</span>
+        </div>
+        <div class="flex items-center">
+          <span class="text-slate-400 w-[60px] shrink-0 font-medium">弹药库存:</span>
+          <span class="text-slate-800 font-semibold text-emerald-600">${inventory}</span>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
 
 const regionCodes: Record<string, string> = {
   '湖北地块': '420000',
@@ -305,41 +422,37 @@ export default function Map3D({
       if (!code) return;
       
       try {
-        let res: Response | null = null;
-        const urls = [
-          `/geo/${code}.json`,
-          `geo/${code}.json`,
-          `./geo/${code}.json`,
-          `${window.location.origin}/geo/${code}.json`
-        ];
-        
-        for (const url of urls) {
-          if (cancelled) return;
-          try {
-            const response = await fetch(url);
-            if (response.ok) {
-              try {
-                // Verify that the response is actually valid JSON (handles SPA fallback HTML elegantly)
-                const clone = response.clone();
-                await clone.json();
-                res = response;
-                break;
-              } catch (parseErr) {
-                // Not valid JSON, continue to next URL
+        let data = localGeoMap[code];
+        if (!data) {
+          const urls = [
+            `/geo/${code}.json`,
+            `geo/${code}.json`,
+            `./geo/${code}.json`,
+            `${window.location.origin}/geo/${code}.json`
+          ];
+          
+          for (const url of urls) {
+            if (cancelled) return;
+            try {
+              const response = await fetch(url);
+              if (response.ok) {
+                const parsed = await response.json();
+                if (parsed && parsed.features) {
+                  data = parsed;
+                  break;
+                }
               }
+            } catch (err) {
+              // continue trying
             }
-          } catch (err) {
-            // continue trying
           }
         }
         
         if (cancelled) return;
-        if (!res || !res.ok) {
-          throw new Error(`Failed to fetch from any URLs for geo code: ${code}`);
+        if (!data || !data.features || !data.features[0]) {
+          throw new Error(`Failed to load geo data for code: ${code}`);
         }
         
-        const data = await res.json();
-        if (cancelled) return;
         const provinceFeature = data.features[0];
         provinceFeatureRef.current = provinceFeature;
         
@@ -598,96 +711,108 @@ export default function Map3D({
 
               const el = document.createElement('div');
               el.className = 'w-4 h-4 flex items-center justify-center relative cursor-pointer group';
-              el.style.visibility = (isTypeVisible && isStatusVisible) ? 'visible' : 'hidden';
               
-              // Store class, type, and status attributes on the element for runtime toggle
+              // Store id, class, type, and status attributes on the element for runtime toggle
+              el.setAttribute('data-site-id', wp.id);
               el.setAttribute('data-site-class', siteClass);
               el.setAttribute('data-site-type', currentType);
               el.setAttribute('data-site-status', currentStatus || 'none');
-              
-              let colorClass = 'text-[#94a3b8]'; // none
-              if (currentStatus === 'ready') colorClass = 'text-[#84b676]';
-              else if (currentStatus === 'operating') colorClass = 'text-[#e3d122]';
-              else if (currentStatus === 'completed') colorClass = 'text-[#8b10ec]';
-              else if (currentStatus === 'canceled') colorClass = 'text-[#df5a5a]';
-    
+
               const root = createRoot(el);
-              
-              const Shape = () => {
-                if (siteClass === 'temporary') {
-                  return (
-                    <svg width="14" height="14" viewBox="0 0 14 14" className={`overflow-visible ${colorClass}`} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}>
-                      <polygon points="7,1 13,12 1,12" fill="currentColor" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
-                    </svg>
-                  );
-                }
-
-                if (siteClass === 'fixed') {
-                  return (
-                    <svg width="14" height="14" viewBox="0 0 14 14" className={`overflow-visible ${colorClass}`} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}>
-                      <rect x="1" y="1" width="12" height="12" rx="1.5" fill="currentColor" stroke="white" strokeWidth="1.5" />
-                    </svg>
-                  );
-                }
-
-                // Default: mobile sites are circles
-                return (
-                  <svg width="14" height="14" viewBox="0 0 14 14" className={`overflow-visible ${colorClass}`} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}>
-                    <circle cx="7" cy="7" r="6" fill="currentColor" stroke="white" strokeWidth="1.5" />
-                  </svg>
-                );
-              };
-              
-              root.render(
-                <div className="w-full h-full relative flex items-center justify-center group-hover:scale-125 transition-transform duration-300">
-                  <Shape />
-                  {currentStatus === 'operating' && (
-                    <span className="absolute w-6 h-6 rounded-full bg-yellow-400/40 animate-ping" />
-                  )}
-                  <div className="site-label absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
-                    {wp.name}
-                  </div>
-                </div>
-              );
-
               const marker = new maplibregl.Marker({ element: el })
                 .setLngLat(wp.coord as [number, number]);
-              
+
+              const updateMarkerFn = (status: string) => {
+                let colorClass = 'text-[#94a3b8]'; // none
+                if (status === 'ready') colorClass = 'text-[#84b676]';
+                else if (status === 'operating') colorClass = 'text-[#e3d122]';
+                else if (status === 'completed') colorClass = 'text-[#8b10ec]';
+                else if (status === 'canceled') colorClass = 'text-[#df5a5a]';
+
+                el.setAttribute('data-site-status', status || 'none');
+
+                const vis = (window as any).mapLayersVisibilityGranular || {
+                  mobileRocket: true, mobileGun: true, fixedRocket: true, fixedGun: true, temporary: true,
+                  stateNone: true, stateReady: true, stateOperating: true, stateCompleted: true, stateCanceled: true,
+                  line1000: true, line500: true, line220: true, lineBuffer: true, weatherOverlay: true
+                };
+
+                let isTypeVisible = false;
+                if (siteClass === 'temporary') {
+                  isTypeVisible = vis.temporary;
+                } else if (siteClass === 'mobile') {
+                  if (currentType === 'rocket') isTypeVisible = vis.mobileRocket;
+                  else if (currentType === 'gun') isTypeVisible = vis.mobileGun;
+                } else if (siteClass === 'fixed') {
+                  if (currentType === 'rocket') isTypeVisible = vis.fixedRocket;
+                  else if (currentType === 'gun') isTypeVisible = vis.fixedGun;
+                }
+
+                const isStatusVisible = 
+                  (status === 'none' && vis.stateNone) ||
+                  (status === 'ready' && vis.stateReady) ||
+                  (status === 'operating' && vis.stateOperating) ||
+                  (status === 'completed' && vis.stateCompleted) ||
+                  (status === 'canceled' && vis.stateCanceled);
+
+                el.style.visibility = (isTypeVisible && isStatusVisible) ? 'visible' : 'hidden';
+
+                const Shape = () => {
+                  if (siteClass === 'temporary') {
+                    return (
+                      <svg width="14" height="14" viewBox="0 0 14 14" className={`overflow-visible ${colorClass}`} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}>
+                        <polygon points="7,1 13,12 1,12" fill="currentColor" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
+                      </svg>
+                    );
+                  }
+
+                  if (siteClass === 'fixed') {
+                    return (
+                      <svg width="14" height="14" viewBox="0 0 14 14" className={`overflow-visible ${colorClass}`} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}>
+                        <rect x="1" y="1" width="12" height="12" rx="1.5" fill="currentColor" stroke="white" strokeWidth="1.5" />
+                      </svg>
+                    );
+                  }
+
+                  // Default: mobile sites are circles
+                  return (
+                    <svg width="14" height="14" viewBox="0 0 14 14" className={`overflow-visible ${colorClass}`} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}>
+                      <circle cx="7" cy="7" r="6" fill="currentColor" stroke="white" strokeWidth="1.5" />
+                    </svg>
+                  );
+                };
+                
+                root.render(
+                  <div className="w-full h-full relative flex items-center justify-center group-hover:scale-125 transition-transform duration-300">
+                    <Shape />
+                    {status === 'operating' && (
+                      <span className="absolute w-6 h-6 rounded-full bg-yellow-400/40 animate-ping" />
+                    )}
+                    <div className="site-label absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
+                      {wp.name}
+                    </div>
+                  </div>
+                );
+
+                marker.setPopup(
+                  new maplibregl.Popup({ 
+                    offset: 12, 
+                    closeButton: true, 
+                    className: 'custom-site-popup' 
+                  }).setHTML(createSitePopupHTML({ ...wp, status: status as any, type: currentType }))
+                );
+              };
+
+              (el as any)._updateMarkerStatus = updateMarkerFn;
+              updateMarkerFn(currentStatus);
+
               const updatedWp = { ...wp, status: currentStatus, type: currentType };
 
               if (onPointClick) {
                 el.addEventListener('click', () => {
-                  onPointClick(updatedWp);
+                  const latestStatus = (el.getAttribute('data-site-status') || currentStatus) as WeatherPoint['status'];
+                  onPointClick({ ...wp, status: latestStatus, type: currentType });
                 });
-              } else {
-                marker.setPopup(new maplibregl.Popup({ offset: 15, closeButton: false }).setHTML(`
-                  <div class="p-2 min-w-[120px]">
-                    <h3 class="font-bold text-sm mb-1 text-slate-800">${wp.name}</h3>
-                    <div class="flex flex-col gap-1">
-                      <p class="text-xs text-slate-600 flex items-center justify-between">
-                        <span>状态</span>
-                        <span class="font-bold px-1.5 py-0.5 rounded-sm bg-slate-100 ${
-                          currentStatus === 'ready' ? 'text-[#84b676]' : 
-                          currentStatus === 'operating' ? 'text-[#e3d122]' : 
-                          currentStatus === 'completed' ? 'text-[#8b10ec]' : 
-                          currentStatus === 'canceled' ? 'text-[#df5a5a]' : 'text-[#94a3b8]'
-                        }">${
-                          currentStatus === 'ready' ? '就绪' : 
-                          currentStatus === 'operating' ? '作业' : 
-                          currentStatus === 'completed' ? '完成' : 
-                          currentStatus === 'canceled' ? '取消' : '无状态'
-                        }</span>
-                      </p>
-                      <p class="text-xs text-slate-600 flex items-center justify-between">
-                        <span>类型</span>
-                        <span class="font-medium text-slate-700">${
-                          siteClass === 'temporary' ? '临时点' : 
-                          `${siteClass === 'fixed' ? '固定' : '移动'}${currentType === 'rocket' ? '火箭' : '高炮'}`
-                        }</span>
-                      </p>
-                    </div>
-                  </div>
-                `));
               }
               
               marker.addTo(mapInstance);
@@ -906,7 +1031,45 @@ export default function Map3D({
     return () => {
       cancelled = true;
     };
-  }, [activeRegion, isCaseMode, playbackMinutes, activeNav]);
+  }, [activeRegion, isCaseMode, activeNav]);
+
+  // Lightweight marker status updater on timeline change without modifying map zoom or position
+  useEffect(() => {
+    if (!isCaseMode || activeRegion !== '湖北地块') return;
+
+    markersRef.current.forEach(marker => {
+      const el = marker.getElement();
+      if (!el) return;
+      const siteId = el.getAttribute('data-site-id');
+      if (!siteId) return;
+
+      let currentStatus = 'none';
+      if (siteId === 'wp-hb-new2') { // 大冶金湖 (17:18-17:19)
+        if (playbackMinutes < 133) currentStatus = 'none';
+        else if (playbackMinutes < 138) currentStatus = 'ready';
+        else if (playbackMinutes < 139) currentStatus = 'operating';
+        else currentStatus = 'completed';
+      } else if (siteId === 'wp-hb-new3') { // 刘仁八 (15:28-15:29)
+        if (playbackMinutes < 23) currentStatus = 'none';
+        else if (playbackMinutes < 28) currentStatus = 'ready';
+        else if (playbackMinutes < 29) currentStatus = 'operating';
+        else currentStatus = 'completed';
+      } else if (siteId === 'wp-hb-new6') { // 白沙 (15:18-15:19)
+        if (playbackMinutes < 13) currentStatus = 'none';
+        else if (playbackMinutes < 18) currentStatus = 'ready';
+        else if (playbackMinutes < 19) currentStatus = 'operating';
+        else currentStatus = 'completed';
+      } else {
+        currentStatus = 'none';
+      }
+
+      if ((el as any)._updateMarkerStatus) {
+        (el as any)._updateMarkerStatus(currentStatus);
+      } else {
+        el.setAttribute('data-site-status', currentStatus);
+      }
+    });
+  }, [playbackMinutes, isCaseMode, activeRegion]);
 
   useEffect(() => {
     const mapInstance = map.current;
@@ -1225,17 +1388,6 @@ export default function Map3D({
   return (
     <div className="absolute inset-0 z-0">
       <div ref={mapContainer} className="w-full h-full bg-slate-200" />
-      
-      {/* 雷达产品实际数据时刻 */}
-      {weatherOverlayVisible && (
-        <div className="radar-overlay-time-container absolute top-3 left-3 z-40 bg-black/40 backdrop-blur-sm text-white text-[11px] font-sans font-medium px-2 py-1 rounded-sm border border-white/10 flex items-center gap-1.5 pointer-events-none">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-          </span>
-          <span>{radarLabel}</span>
-        </div>
-      )}
     </div>
   );
 }

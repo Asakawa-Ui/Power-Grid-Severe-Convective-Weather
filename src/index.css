@@ -44,3 +44,60 @@
 .show-site-labels .site-label {
   display: block !important;
 }
+
+/* Custom MapLibre popup for lightweight site detail card */
+.custom-site-popup .maplibregl-popup-content {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15), 0 4px 6px -2px rgba(15, 23, 42, 0.05);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  padding: 10px 12px;
+}
+
+.custom-site-popup .maplibregl-popup-close-button {
+  font-size: 16px;
+  color: #94a3b8;
+  padding: 3px 7px;
+  border-top-right-radius: 8px;
+  line-height: 1;
+}
+
+.custom-site-popup .maplibregl-popup-close-button:hover {
+  background: rgba(241, 245, 249, 0.8);
+  color: #334155;
+}
+
+/* Correctly color tip arrow according to MapLibre anchor placement */
+.custom-site-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.custom-site-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.custom-site-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: rgba(255, 255, 255, 0.85) !important;
+  border-bottom-color: transparent !important;
+  border-left-color: transparent !important;
+  border-right-color: transparent !important;
+}
+
+.custom-site-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.custom-site-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.custom-site-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: rgba(255, 255, 255, 0.85) !important;
+  border-top-color: transparent !important;
+  border-left-color: transparent !important;
+  border-right-color: transparent !important;
+}
+
+.custom-site-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: rgba(255, 255, 255, 0.85) !important;
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+  border-left-color: transparent !important;
+}
+
+.custom-site-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: rgba(255, 255, 255, 0.85) !important;
+  border-top-color: transparent !important;
+  border-bottom-color: transparent !important;
+  border-right-color: transparent !important;
+}
