@@ -10,6 +10,7 @@ import RightPanel from './components/RightPanel';
 import BottomPanel from './components/BottomPanel';
 import RegionSelector from './components/RegionSelector';
 import Map3D from './components/Map3D';
+import MapErrorBoundary from './components/MapErrorBoundary';
 import MapLayersPanel from './components/MapLayersPanel';
 import OperationCommandLeft from './components/OperationCommandLeft';
 import OperationCommandRight from './components/OperationCommandRight';
@@ -156,7 +157,9 @@ export default function App() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-100 font-sans text-slate-800">
       {activeNav !== '效果评估' && (
-        <Map3D activeRegion={activeRegion} onPointClick={setSelectedPoint} isCaseMode={isCaseMode} playbackMinutes={playbackMinutes} normalMinutes={normalMinutes} activeNav={activeNav} />
+        <MapErrorBoundary className="absolute inset-0 z-0">
+          <Map3D activeRegion={activeRegion} onPointClick={setSelectedPoint} isCaseMode={isCaseMode} playbackMinutes={playbackMinutes} normalMinutes={normalMinutes} activeNav={activeNav} />
+        </MapErrorBoundary>
       )}
       <Header 
         activeNav={activeNav} 
@@ -217,16 +220,18 @@ export default function App() {
                 {/* Col 2: Center Map */}
                 <div className="flex-1 bg-white border border-slate-200/50 rounded-xl flex flex-col shadow-sm relative min-w-0 overflow-hidden">
                   <div className="flex-1 relative overflow-hidden bg-slate-50">
-                    <Map3D 
-                      activeRegion={activeRegion} 
-                      onPointClick={setSelectedPoint} 
-                      isCaseMode={isCaseMode} 
-                      playbackMinutes={playbackMinutes} 
-                      normalMinutes={normalMinutes}
-                      activeNav={activeNav} 
-                      selectedHistoryId={selectedHistoryId}
-                      activeCaseId={activeCaseId}
-                    />
+                    <MapErrorBoundary className="absolute inset-0">
+                      <Map3D 
+                        activeRegion={activeRegion} 
+                        onPointClick={setSelectedPoint} 
+                        isCaseMode={isCaseMode} 
+                        playbackMinutes={playbackMinutes} 
+                        normalMinutes={normalMinutes}
+                        activeNav={activeNav} 
+                        selectedHistoryId={selectedHistoryId}
+                        activeCaseId={activeCaseId}
+                      />
+                    </MapErrorBoundary>
                     <BottomPanel 
                       activeNav={activeNav}
                       isCaseMode={isCaseMode}
@@ -292,16 +297,18 @@ export default function App() {
               {/* Map Box */}
               <div className="flex-1 bg-white border border-slate-200/50 rounded-xl flex flex-col shadow-sm relative min-w-0 overflow-hidden">
                 <div className="flex-1 relative overflow-hidden bg-slate-50">
-                  <Map3D 
-                    activeRegion={activeRegion} 
-                    onPointClick={setSelectedPoint} 
-                    isCaseMode={isCaseMode} 
-                    playbackMinutes={playbackMinutes} 
-                    normalMinutes={normalMinutes}
-                    activeNav={activeNav} 
-                    selectedHistoryId={selectedHistoryId}
-                    activeCaseId={activeCaseId}
-                  />
+                  <MapErrorBoundary className="absolute inset-0">
+                    <Map3D 
+                      activeRegion={activeRegion} 
+                      onPointClick={setSelectedPoint} 
+                      isCaseMode={isCaseMode} 
+                      playbackMinutes={playbackMinutes} 
+                      normalMinutes={normalMinutes}
+                      activeNav={activeNav} 
+                      selectedHistoryId={selectedHistoryId}
+                      activeCaseId={activeCaseId}
+                    />
+                  </MapErrorBoundary>
                   <BottomPanel 
                     activeNav={activeNav}
                     isCaseMode={isCaseMode}

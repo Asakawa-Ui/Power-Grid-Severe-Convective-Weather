@@ -189,6 +189,12 @@ export default function Map3D({
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [mapType, setMapType] = useState<'vec' | 'img' | 'ter'>('ter');
+  const [mapInitError, setMapInitError] = useState<Error | null>(null);
+
+  // If map initialization failed fatally, throw to let MapErrorBoundary catch it
+  if (mapInitError) {
+    throw mapInitError;
+  }
 
   const provinceFeatureRef = useRef<any>(null);
   const currentRegionRef = useRef<string>('');
@@ -255,16 +261,16 @@ export default function Map3D({
     ];
 
     if (mapInstance.getLayer('power-lines-glow-layer')) {
-      mapInstance.setFilter('power-lines-glow-layer', ['all', ['==', 'type', 'line'], colorMatchFilter]);
+      mapInstance.setFilter('power-lines-glow-layer', ['all', ['==', 'type', 'line'], colorMatchFilter] as any);
     }
     if (mapInstance.getLayer('power-lines-layer')) {
-      mapInstance.setFilter('power-lines-layer', ['all', ['==', 'type', 'line'], colorMatchFilter]);
+      mapInstance.setFilter('power-lines-layer', ['all', ['==', 'type', 'line'], colorMatchFilter] as any);
     }
 
     if (mapInstance.getLayer('power-lines-buffer-layer')) {
       if (vis.lineBuffer) {
         mapInstance.setLayoutProperty('power-lines-buffer-layer', 'visibility', 'visible');
-        mapInstance.setFilter('power-lines-buffer-layer', colorMatchFilter);
+        mapInstance.setFilter('power-lines-buffer-layer', colorMatchFilter as any);
       } else {
         mapInstance.setLayoutProperty('power-lines-buffer-layer', 'visibility', 'none');
       }
@@ -296,82 +302,92 @@ export default function Map3D({
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
-    map.current = new maplibregl.Map({
-      container: mapContainer.current,
-      attributionControl: false,
-      transformRequest: (url: string) => {
-        if (url.includes('tianditu.gov.cn')) {
-          const selectedKey = getRandomKey();
-          const newUrl = url.replace(/tk=[a-zA-Z0-9]+/, `tk=${selectedKey}`);
-          return { url: newUrl };
-        }
-        return { url };
-      },
-      style: {
-        version: 8,
-        sources: {
-          tdt_ter: createTdtSource('ter'),
-          tdt_cta: createTdtSource('cta'),
-          tdt_img: createTdtSource('img'),
-          tdt_cia: createTdtSource('cia'),
-          tdt_vec: createTdtSource('vec'),
-          tdt_cva: createTdtSource('cva')
-        },
-        layers: [
-          // Terrain (default)
-          {
-            id: 'tdt-ter-layer',
-            type: 'raster',
-            source: 'tdt_ter',
-            layout: { visibility: 'visible' }
-          },
-          {
-            id: 'tdt-cta-layer',
-            type: 'raster',
-            source: 'tdt_cta',
-            layout: { visibility: 'visible' }
-          },
-          // Satellite
-          {
-            id: 'tdt-img-layer',
-            type: 'raster',
-            source: 'tdt_img',
-            layout: { visibility: 'none' }
-          },
-          {
-            id: 'tdt-cia-layer',
-            type: 'raster',
-            source: 'tdt_cia',
-            layout: { visibility: 'none' }
-          },
-          // Vector
-          {
-            id: 'tdt-vec-layer',
-            type: 'raster',
-            source: 'tdt_vec',
-            layout: { visibility: 'none' }
-          },
-          {
-            id: 'tdt-cva-layer',
-            type: 'raster',
-            source: 'tdt_cva',
-            layout: { visibility: 'none' }
+    try {
+      map.current = new maplibregl.Map({
+        container: mapContainer.current,
+        attributionControl: false,
+        transformRequest: (url: string) => {
+          if (url.includes('tianditu.gov.cn')) {
+            const selectedKey = getRandomKey();
+            const newUrl = url.replace(/tk=[a-zA-Z0-9]+/, `tk=${selectedKey}`);
+            return { url: newUrl };
           }
-        ],
-        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
-      },
-      center: [112.27, 30.15],
-      zoom: 6,
-      pitch: 45,
-      bearing: 0,
-      maxPitch: 85
-    });
+          return { url };
+        },
+        style: {
+          version: 8,
+          sources: {
+            tdt_ter: createTdtSource('ter'),
+            tdt_cta: createTdtSource('cta'),
+            tdt_img: createTdtSource('img'),
+            tdt_cia: createTdtSource('cia'),
+            tdt_vec: createTdtSource('vec'),
+            tdt_cva: createTdtSource('cva')
+          },
+          layers: [
+            // Terrain (default)
+            {
+              id: 'tdt-ter-layer',
+              type: 'raster',
+              source: 'tdt_ter',
+              layout: { visibility: 'visible' }
+            },
+            {
+              id: 'tdt-cta-layer',
+              type: 'raster',
+              source: 'tdt_cta',
+              layout: { visibility: 'visible' }
+            },
+            // Satellite
+            {
+              id: 'tdt-img-layer',
+              type: 'raster',
+              source: 'tdt_img',
+              layout: { visibility: 'none' }
+            },
+            {
+              id: 'tdt-cia-layer',
+              type: 'raster',
+              source: 'tdt_cia',
+              layout: { visibility: 'none' }
+            },
+            // Vector
+            {
+              id: 'tdt-vec-layer',
+              type: 'raster',
+              source: 'tdt_vec',
+              layout: { visibility: 'none' }
+            },
+            {
+              id: 'tdt-cva-layer',
+              type: 'raster',
+              source: 'tdt_cva',
+              layout: { visibility: 'none' }
+            }
+          ],
+          glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
+        },
+        center: [112.27, 30.15],
+        zoom: 6,
+        pitch: 45,
+        bearing: 0,
+        maxPitch: 85
+      });
+    } catch (err: any) {
+      console.error('[Map3D] Failed to instantiate MapLibre GL:', err);
+      setMapInitError(err instanceof Error ? err : new Error(String(err)));
+      return;
+    }
 
     map.current.on('error', (e) => {
       // Gracefully capture and suppress map tile loading errors (like 429 Too Many Requests or 404)
       const msg = e.message || '';
       const isExpectedTileError = msg.includes('429') || msg.includes('404') || e.error?.status === 429 || e.error?.status === 404;
       if (isExpectedTileError) {
+        return;
+      }
+      if (e?.error && (msg.includes('WebGL') || msg.includes('context lost'))) {
+        setMapInitError(e.error);
         return;
       }
       console.warn('MapLibre gracefully handled error:', e);
