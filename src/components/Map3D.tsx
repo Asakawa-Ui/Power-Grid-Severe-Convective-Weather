@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createRoot } from 'react-dom/client';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
@@ -238,12 +237,15 @@ export default function Map3D({
             else if (currentType === 'gun') isTypeVisible = vis.fixedGun;
           }
 
-          const isStatusVisible = 
-            (currentStatus === 'none' && vis.stateNone) ||
-            (currentStatus === 'ready' && vis.stateReady) ||
-            (currentStatus === 'operating' && vis.stateOperating) ||
-            (currentStatus === 'completed' && vis.stateCompleted) ||
-            (currentStatus === 'canceled' && vis.stateCanceled);
+          const isStatusVisible = activeNav === '监测预警'
+            ? true
+            : (
+                (currentStatus === 'none' && vis.stateNone) ||
+                (currentStatus === 'ready' && vis.stateReady) ||
+                (currentStatus === 'operating' && vis.stateOperating) ||
+                (currentStatus === 'completed' && vis.stateCompleted) ||
+                (currentStatus === 'canceled' && vis.stateCanceled)
+              );
 
           el.style.visibility = (isTypeVisible && isStatusVisible) ? 'visible' : 'hidden';
         }
@@ -602,18 +604,17 @@ export default function Map3D({
             else if (wp.type === 'rocket') color = '#2563eb';
             else if (wp.type === 'vehicle') color = '#ea580c';
 
-            const root = createRoot(el);
-            root.render(
-              <div className="w-full h-full relative flex items-center justify-center group-hover:scale-125 transition-transform duration-300">
-                <svg width="18" height="18" viewBox="0 0 18 18" className="overflow-visible" style={{ filter: 'drop-shadow(0px 1.5px 3px rgba(0,0,0,0.35))' }}>
-                  <circle cx="9" cy="9" r="6.5" fill={color} stroke="white" strokeWidth="1.8" />
+            el.innerHTML = `
+              <div class="w-full h-full relative flex items-center justify-center group-hover:scale-125 transition-transform duration-300">
+                <svg width="18" height="18" viewBox="0 0 18 18" class="overflow-visible" style="filter: drop-shadow(0px 1.5px 3px rgba(0,0,0,0.35))">
+                  <circle cx="9" cy="9" r="6.5" fill="${color}" stroke="white" stroke-width="1.8" />
                   <circle cx="9" cy="9" r="2" fill="white" />
                 </svg>
-                <div className="site-label absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
-                  {wp.name}
+                <div class="site-label absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
+                  ${wp.name}
                 </div>
               </div>
-            );
+            `;
 
             const marker = new maplibregl.Marker({ element: el })
               .setLngLat(wp.coord as [number, number]);
@@ -670,7 +671,9 @@ export default function Map3D({
               let currentStatus = wp.status;
               let currentType = wp.type;
               
-              if (isCaseMode && activeRegion === '湖北地块') {
+              if (activeNav === '监测预警') {
+                currentStatus = 'none';
+              } else if (isCaseMode && activeRegion === '湖北地块') {
                 const mins = playbackMinutes;
                 if (wp.id === 'wp-hb-new2') { // 大冶金湖 (17:18-17:19)
                   if (mins < 133) currentStatus = 'none'; // Starts 15:00. 17:13 is minute 133 (5 mins before 17:18)
@@ -718,12 +721,15 @@ export default function Map3D({
                 else if (currentType === 'gun') isTypeVisible = vis.fixedGun;
               }
 
-              const isStatusVisible = 
-                (currentStatus === 'none' && vis.stateNone) ||
-                (currentStatus === 'ready' && vis.stateReady) ||
-                (currentStatus === 'operating' && vis.stateOperating) ||
-                (currentStatus === 'completed' && vis.stateCompleted) ||
-                (currentStatus === 'canceled' && vis.stateCanceled);
+              const isStatusVisible = activeNav === '监测预警'
+                ? true
+                : (
+                    (currentStatus === 'none' && vis.stateNone) ||
+                    (currentStatus === 'ready' && vis.stateReady) ||
+                    (currentStatus === 'operating' && vis.stateOperating) ||
+                    (currentStatus === 'completed' && vis.stateCompleted) ||
+                    (currentStatus === 'canceled' && vis.stateCanceled)
+                  );
 
               const el = document.createElement('div');
               el.className = 'w-4 h-4 flex items-center justify-center relative cursor-pointer group';
@@ -734,16 +740,16 @@ export default function Map3D({
               el.setAttribute('data-site-type', currentType);
               el.setAttribute('data-site-status', currentStatus || 'none');
 
-              const root = createRoot(el);
               const marker = new maplibregl.Marker({ element: el })
                 .setLngLat(wp.coord as [number, number]);
 
               const updateMarkerFn = (status: string) => {
                 let colorClass = 'text-[#94a3b8]'; // none
-                if (status === 'ready') colorClass = 'text-[#84b676]';
-                else if (status === 'operating') colorClass = 'text-[#e3d122]';
-                else if (status === 'completed') colorClass = 'text-[#8b10ec]';
-                else if (status === 'canceled') colorClass = 'text-[#df5a5a]';
+                let fillColor = '#94a3b8';
+                if (status === 'ready') { colorClass = 'text-[#84b676]'; fillColor = '#84b676'; }
+                else if (status === 'operating') { colorClass = 'text-[#e3d122]'; fillColor = '#e3d122'; }
+                else if (status === 'completed') { colorClass = 'text-[#8b10ec]'; fillColor = '#8b10ec'; }
+                else if (status === 'canceled') { colorClass = 'text-[#df5a5a]'; fillColor = '#df5a5a'; }
 
                 el.setAttribute('data-site-status', status || 'none');
 
@@ -764,51 +770,44 @@ export default function Map3D({
                   else if (currentType === 'gun') isTypeVisible = vis.fixedGun;
                 }
 
-                const isStatusVisible = 
-                  (status === 'none' && vis.stateNone) ||
-                  (status === 'ready' && vis.stateReady) ||
-                  (status === 'operating' && vis.stateOperating) ||
-                  (status === 'completed' && vis.stateCompleted) ||
-                  (status === 'canceled' && vis.stateCanceled);
+                const isStatusVisible = activeNav === '监测预警'
+                  ? true
+                  : (
+                      (status === 'none' && vis.stateNone) ||
+                      (status === 'ready' && vis.stateReady) ||
+                      (status === 'operating' && vis.stateOperating) ||
+                      (status === 'completed' && vis.stateCompleted) ||
+                      (status === 'canceled' && vis.stateCanceled)
+                    );
 
                 el.style.visibility = (isTypeVisible && isStatusVisible) ? 'visible' : 'hidden';
 
-                const Shape = () => {
-                  if (siteClass === 'temporary') {
-                    return (
-                      <svg width="14" height="14" viewBox="0 0 14 14" className={`overflow-visible ${colorClass}`} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}>
-                        <polygon points="7,1 13,12 1,12" fill="currentColor" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
-                      </svg>
-                    );
-                  }
+                let shapeSvg = '';
+                if (siteClass === 'temporary') {
+                  shapeSvg = `<svg width="14" height="14" viewBox="0 0 14 14" class="overflow-visible ${colorClass}" style="filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.3))">
+                    <polygon points="7,1 13,12 1,12" fill="${fillColor}" stroke="white" stroke-width="1.5" stroke-linejoin="round" />
+                  </svg>`;
+                } else if (siteClass === 'fixed') {
+                  shapeSvg = `<svg width="14" height="14" viewBox="0 0 14 14" class="overflow-visible ${colorClass}" style="filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.3))">
+                    <rect x="1" y="1" width="12" height="12" rx="1.5" fill="${fillColor}" stroke="white" stroke-width="1.5" />
+                  </svg>`;
+                } else {
+                  shapeSvg = `<svg width="14" height="14" viewBox="0 0 14 14" class="overflow-visible ${colorClass}" style="filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.3))">
+                    <circle cx="7" cy="7" r="6" fill="${fillColor}" stroke="white" stroke-width="1.5" />
+                  </svg>`;
+                }
 
-                  if (siteClass === 'fixed') {
-                    return (
-                      <svg width="14" height="14" viewBox="0 0 14 14" className={`overflow-visible ${colorClass}`} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}>
-                        <rect x="1" y="1" width="12" height="12" rx="1.5" fill="currentColor" stroke="white" strokeWidth="1.5" />
-                      </svg>
-                    );
-                  }
+                const pingSpan = status === 'operating' ? '<span class="absolute w-6 h-6 rounded-full bg-yellow-400/40 animate-ping"></span>' : '';
 
-                  // Default: mobile sites are circles
-                  return (
-                    <svg width="14" height="14" viewBox="0 0 14 14" className={`overflow-visible ${colorClass}`} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}>
-                      <circle cx="7" cy="7" r="6" fill="currentColor" stroke="white" strokeWidth="1.5" />
-                    </svg>
-                  );
-                };
-                
-                root.render(
-                  <div className="w-full h-full relative flex items-center justify-center group-hover:scale-125 transition-transform duration-300">
-                    <Shape />
-                    {status === 'operating' && (
-                      <span className="absolute w-6 h-6 rounded-full bg-yellow-400/40 animate-ping" />
-                    )}
-                    <div className="site-label absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
-                      {wp.name}
+                el.innerHTML = `
+                  <div class="w-full h-full relative flex items-center justify-center group-hover:scale-125 transition-transform duration-300">
+                    ${shapeSvg}
+                    ${pingSpan}
+                    <div class="site-label absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
+                      ${wp.name}
                     </div>
                   </div>
-                );
+                `;
 
                 marker.setPopup(
                   new maplibregl.Popup({ 
@@ -1051,7 +1050,7 @@ export default function Map3D({
 
   // Lightweight marker status updater on timeline change without modifying map zoom or position
   useEffect(() => {
-    if (!isCaseMode || activeRegion !== '湖北地块') return;
+    if (activeNav === '监测预警' || !isCaseMode || activeRegion !== '湖北地块') return;
 
     markersRef.current.forEach(marker => {
       const el = marker.getElement();
@@ -1085,7 +1084,7 @@ export default function Map3D({
         el.setAttribute('data-site-status', currentStatus);
       }
     });
-  }, [playbackMinutes, isCaseMode, activeRegion]);
+  }, [playbackMinutes, isCaseMode, activeRegion, activeNav]);
 
   useEffect(() => {
     const mapInstance = map.current;

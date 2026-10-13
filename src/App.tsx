@@ -194,6 +194,7 @@ export default function App() {
             playbackMinutes={playbackMinutes} 
             activeRegion={activeRegion}
             setActiveRegion={setActiveRegion}
+            activeCaseId={activeCaseId}
           />
           <OperationCommandRight isCaseMode={isCaseMode} playbackMinutes={playbackMinutes} />
         </>

@@ -8,6 +8,58 @@ interface LeftProps {
   activeCaseId?: string;
 }
 
+// 自定义图表 Tooltip，修复默认 Tooltip 内容溢出、行间距过大及无单位的问题
+const CustomChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || !payload.length) return null;
+
+  return (
+    <div className="bg-white/95 backdrop-blur-md rounded-lg px-2.5 py-2 shadow-xl border border-slate-200/90 text-xs min-w-[135px] pointer-events-none select-none">
+      <div className="text-[11px] font-bold text-slate-700 pb-1 mb-1.5 border-b border-slate-100 flex items-center justify-between">
+        <span className="font-mono text-slate-800">{label}</span>
+        <span className="text-[10px] text-slate-400 font-normal">统计概况</span>
+      </div>
+      <div className="space-y-1">
+        {payload.map((entry: any, index: number) => {
+          let name = entry.name || '';
+          let unit = '';
+
+          if (name.includes('(发)')) {
+            name = name.replace('(发)', '');
+            unit = '发';
+          } else if (name.includes('(次)')) {
+            name = name.replace('(次)', '');
+            unit = '次';
+          } else if (name.includes('库存') || name.includes('弹')) {
+            unit = '发';
+          } else if (name.includes('就绪') || name.includes('点')) {
+            unit = '个';
+          } else if (name.includes('作业')) {
+            unit = '次';
+          }
+
+          const color = entry.color || entry.fill || '#3b82f6';
+
+          return (
+            <div key={`tip-${index}`} className="flex items-center justify-between gap-3 text-[11px] leading-tight">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className="w-2 h-2 rounded-full shrink-0 shadow-xs"
+                  style={{ backgroundColor: color }}
+                />
+                <span className="text-slate-600 truncate">{name}</span>
+              </div>
+              <div className="font-mono shrink-0">
+                <span className="font-bold text-slate-800">{entry.value}</span>
+                {unit && <span className="text-slate-400 ml-0.5 text-[10px] font-normal">{unit}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false, activeCaseId = '2026-06-18' }: LeftProps) {
   const [selectedProvince, setSelectedProvince] = useState<string>('湖北');
   const [selectedCity, setSelectedCity] = useState<string>('全省');
@@ -385,8 +437,9 @@ export function EffectEvaluationLeftScopeAndStats({ activeRegion, isCaseMode = f
               <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
               <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
               <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                cursor={{ fill: '#f8fafc' }}
+                content={<CustomChartTooltip />}
+                wrapperStyle={{ zIndex: 100, pointerEvents: 'none' }}
+                cursor={{ fill: 'rgba(241, 245, 249, 0.6)' }}
               />
               <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} iconSize={8} />
               

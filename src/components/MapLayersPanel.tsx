@@ -414,74 +414,65 @@ export default function MapLayersPanel({
       </div>
 
       {/* Category 2: 作业状态 */}
-      <div className="flex flex-col">
-        <button 
-          onClick={() => toggleExpand('states')}
-          className="flex items-center justify-between w-full h-7 px-1.5 bg-white/95 backdrop-blur-sm border border-slate-200/60 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
-        >
-          <span className="text-[10px] font-bold">作业状态</span>
-          {expanded.states ? <ChevronUp className="w-3 h-3 text-slate-400" /> : <ChevronDown className="w-3 h-3 text-slate-400" />}
-        </button>
+      {activeNav !== '监测预警' && (
+        <div className="flex flex-col">
+          <button 
+            onClick={() => toggleExpand('states')}
+            className="flex items-center justify-between w-full h-7 px-1.5 bg-white/95 backdrop-blur-sm border border-slate-200/60 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+          >
+            <span className="text-[10px] font-bold">作业状态</span>
+            {expanded.states ? <ChevronUp className="w-3 h-3 text-slate-400" /> : <ChevronDown className="w-3 h-3 text-slate-400" />}
+          </button>
 
-        {expanded.states && (
-          <div className="mt-0.5 bg-white/90 backdrop-blur-sm border border-slate-200/50 rounded p-1 flex flex-col gap-0.5">
-            <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
-              <input 
-                type="checkbox"
-                checked={visibility.stateNone}
-                onChange={() => toggleLeaf('stateNone')}
-                className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-              />
-              <div className="w-2 h-2 rounded-full bg-[#94a3b8] shrink-0" />
-              <span className="truncate">无状态</span>
-            </label>
+          {expanded.states && (
+            <div className="mt-0.5 bg-white/90 backdrop-blur-sm border border-slate-200/50 rounded p-1 flex flex-col gap-0.5">
+              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
+                <input 
+                  type="checkbox"
+                  checked={visibility.stateNone}
+                  onChange={() => toggleLeaf('stateNone')}
+                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
+                />
+                <div className="w-2 h-2 rounded-full bg-[#94a3b8] shrink-0" />
+                <span className="truncate">无状态</span>
+              </label>
 
-            <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
-              <input 
-                type="checkbox"
-                checked={visibility.stateReady}
-                onChange={() => toggleLeaf('stateReady')}
-                className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-              />
-              <div className="w-2 h-2 rounded-full bg-[#84b676] shrink-0" />
-              <span className="truncate">就绪</span>
-            </label>
+              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
+                <input 
+                  type="checkbox"
+                  checked={visibility.stateReady}
+                  onChange={() => toggleLeaf('stateReady')}
+                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
+                />
+                <div className="w-2 h-2 rounded-full bg-[#84b676] shrink-0" />
+                <span className="truncate">就绪</span>
+              </label>
 
-            <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
-              <input 
-                type="checkbox"
-                checked={visibility.stateOperating}
-                onChange={() => toggleLeaf('stateOperating')}
-                className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-              />
-              <div className="w-2 h-2 rounded-full bg-[#e3d122] shrink-0" />
-              <span className="truncate">作业</span>
-            </label>
+              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
+                <input 
+                  type="checkbox"
+                  checked={visibility.stateOperating}
+                  onChange={() => toggleLeaf('stateOperating')}
+                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
+                />
+                <div className="w-2 h-2 rounded-full bg-[#e3d122] shrink-0" />
+                <span className="truncate">作业</span>
+              </label>
 
-            <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
-              <input 
-                type="checkbox"
-                checked={visibility.stateCompleted}
-                onChange={() => toggleLeaf('stateCompleted')}
-                className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-              />
-              <div className="w-2 h-2 rounded-full bg-[#8b10ec] shrink-0" />
-              <span className="truncate">完成</span>
-            </label>
-
-            <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
-              <input 
-                type="checkbox"
-                checked={visibility.stateCanceled}
-                onChange={() => toggleLeaf('stateCanceled')}
-                className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-              />
-              <div className="w-2 h-2 rounded-full bg-[#df5a5a] shrink-0" />
-              <span className="truncate">取消</span>
-            </label>
-          </div>
-        )}
-      </div>
+              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
+                <input 
+                  type="checkbox"
+                  checked={visibility.stateCompleted}
+                  onChange={() => toggleLeaf('stateCompleted')}
+                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
+                />
+                <div className="w-2 h-2 rounded-full bg-[#8b10ec] shrink-0" />
+                <span className="truncate">完成</span>
+              </label>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Category 3: 输电线路 */}
       <div className="flex flex-col">

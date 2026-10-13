@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, Rocket, ArrowUpRight, Navigation, List, MapPin } from 'lucide-react';
 
 interface OperationCommandRightProps {
@@ -7,18 +7,60 @@ interface OperationCommandRightProps {
 }
 
 export default function OperationCommandRight({ isCaseMode = false, playbackMinutes = 0 }: OperationCommandRightProps) {
+  const [currentSystemTime, setCurrentSystemTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSystemTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatHM = (d: Date) => {
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+  };
+
   let commands = [];
   let dynamics = [];
 
   if (isCaseMode) {
-    if (playbackMinutes >= 13) {
-      commands.push({ type: '火箭', name: '白沙作业点', time: '2026-06-18 15:13', actionTime: '15:18', count: '4发', angle: '--', azimuth: '210°', status: '已接收' });
+    if (playbackMinutes >= 11) {
+      commands.push({
+        type: '火箭',
+        name: '白沙作业点',
+        time: '2026-06-18 15:11',
+        actionTime: '15:18',
+        count: '4发',
+        angle: '--',
+        azimuth: '210°',
+        status: playbackMinutes >= 13 ? '已接收' : '已下发'
+      });
     }
-    if (playbackMinutes >= 23) {
-      commands.push({ type: '火箭', name: '刘仁八作业点', time: '2026-06-18 15:23', actionTime: '15:28', count: '4发', angle: '56°', azimuth: '215°', status: '已接收' });
+    if (playbackMinutes >= 21) {
+      commands.push({
+        type: '火箭',
+        name: '刘仁八作业点',
+        time: '2026-06-18 15:21',
+        actionTime: '15:28',
+        count: '4发',
+        angle: '56°',
+        azimuth: '215°',
+        status: playbackMinutes >= 23 ? '已接收' : '已下发'
+      });
     }
-    if (playbackMinutes >= 133) {
-      commands.push({ type: '火箭', name: '大冶金湖作业点', time: '2026-06-18 17:13', actionTime: '17:18', count: '4发', angle: '--', azimuth: '--', status: '已接收' });
+    if (playbackMinutes >= 131) {
+      commands.push({
+        type: '火箭',
+        name: '大冶金湖作业点',
+        time: '2026-06-18 17:11',
+        actionTime: '17:18',
+        count: '4发',
+        angle: '--',
+        azimuth: '--',
+        status: playbackMinutes >= 133 ? '已接收' : '已下发'
+      });
     }
 
     commands.reverse(); // Newest first
@@ -51,21 +93,22 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
       });
     }
   } else {
+    const curTime = formatHM(currentSystemTime);
     commands = [
-      { type: '高炮', name: '姜祥村作业点', time: '2026-07-07 18:30', actionTime: '18:45', count: '40发', angle: '45°', azimuth: '225°', status: '待下发' },
-      { type: '高炮', name: '铁山南作业点', time: '2026-07-07 18:25', actionTime: '18:38', count: '40发', angle: '42°', azimuth: '210°', status: '待下发' },
-      { type: '高炮', name: '沿湖生态园作业点', time: '2026-07-07 18:20', actionTime: '18:32', count: '40发', angle: '40°', azimuth: '205°', status: '待下发' },
-      { type: '火箭', name: '大冶金湖作业点', time: '2026-07-07 18:15', actionTime: '18:28', count: '8发', angle: '55°', azimuth: '160°', status: '待下发' },
+      { type: '高炮', name: '姜祥村作业点', time: curTime, count: '40发', angle: '45°', azimuth: '225°', status: '待下发' },
+      { type: '高炮', name: '铁山南作业点', time: curTime, count: '40发', angle: '42°', azimuth: '210°', status: '待下发' },
+      { type: '高炮', name: '沿湖生态园作业点', time: curTime, count: '40发', angle: '40°', azimuth: '205°', status: '待下发' },
+      { type: '火箭', name: '大冶金湖作业点', time: curTime, count: '8发', angle: '55°', azimuth: '160°', status: '待下发' },
     ];
 
     dynamics = [
-      { type: '高炮', name: '姜祥村作业点', id: '420222001', status: '就绪', time: '2026-07-07 18:45' },
-      { type: '高炮', name: '铁山南作业点', id: '420222002', status: '就绪', time: '2026-07-07 18:38' },
-      { type: '高炮', name: '沿湖生态园作业点', id: '420281005', status: '就绪', time: '2026-07-07 18:32' },
-      { type: '火箭', name: '大冶金湖作业点', id: '420281002', status: '就绪', time: '2026-07-07 18:30' },
-      { type: '火箭', name: '白沙作业点', id: '422324004', status: '就绪', time: '2026-07-07 18:28' },
-      { type: '高炮', name: '太子作业点', id: '420222003', status: '就绪', time: '2026-07-07 18:20' },
-      { type: '火箭', name: '刘仁八作业点', id: '420281004', status: '就绪', time: '2026-07-07 18:15' },
+      { type: '高炮', name: '姜祥村作业点', id: '420222001', status: '就绪', time: '' },
+      { type: '高炮', name: '铁山南作业点', id: '420222002', status: '就绪', time: '' },
+      { type: '高炮', name: '沿湖生态园作业点', id: '420281005', status: '就绪', time: '' },
+      { type: '火箭', name: '大冶金湖作业点', id: '420281002', status: '就绪', time: '' },
+      { type: '火箭', name: '白沙作业点', id: '422324004', status: '就绪', time: '' },
+      { type: '高炮', name: '太子作业点', id: '420222003', status: '就绪', time: '' },
+      { type: '火箭', name: '刘仁八作业点', id: '420281004', status: '就绪', time: '' },
     ];
   }
 
@@ -113,7 +156,7 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
                       <span className="text-sm font-bold text-slate-700">{cmd.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500 font-mono font-medium">{timeOnly}</span>
+                      {isCaseMode && <span className="text-xs text-slate-500 font-mono font-medium">{timeOnly}</span>}
                       {cmd.status === '已接收' && (
                         <span className="px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100/60 rounded shrink-0 select-none">
                           已接收
@@ -137,10 +180,12 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
                     </div>
                   </div>
                   <div className="flex items-center justify-between px-1 mt-1">
-                    <div className="flex items-center gap-1.5 text-slate-600">
-                      <Clock className="w-3.5 h-3.5 text-blue-500" />
-                      <span className="text-xs font-medium font-mono">{cmd.actionTime}</span>
-                    </div>
+                    {isCaseMode && cmd.actionTime && (
+                      <div className="flex items-center gap-1.5 text-slate-600">
+                        <Clock className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="text-xs font-medium font-mono">{cmd.actionTime}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5 text-slate-600">
                       <Rocket className="w-3.5 h-3.5 text-blue-500" />
                       <span className="text-xs font-medium">{cmd.count}</span>
@@ -181,26 +226,43 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent('map-focus-site', { detail: { siteName: dyn.name } }));
                 }}
-                className="bg-gradient-to-r from-slate-50 to-white border border-slate-100 rounded-lg p-3 flex flex-col gap-2 shadow-sm transition-all hover:shadow-md hover:border-blue-200/60 cursor-pointer active:bg-slate-100/50"
+                className={`bg-gradient-to-r from-slate-50 to-white border border-slate-100 rounded-lg p-3 shadow-sm transition-all hover:shadow-md hover:border-blue-200/60 cursor-pointer active:bg-slate-100/50 ${isCaseMode ? 'flex flex-col gap-2' : 'flex items-center justify-between'}`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="px-2 py-0.5 text-[10px] font-bold text-white rounded-md shadow-sm bg-orange-500">
-                      {dyn.type}
-                    </span>
-                    <span className="text-sm font-bold text-slate-700">{dyn.name}</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-xs text-slate-500 px-1 mt-0.5">
-                  <span className="flex items-center gap-1.5">
-                    当前状态: 
-                    <span className={`font-medium flex items-center gap-1 ${getStatusColorClass(dyn.status)}`}>
+                {isCaseMode ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className="px-2 py-0.5 text-[10px] font-bold text-white rounded-md shadow-sm bg-orange-500">
+                          {dyn.type}
+                        </span>
+                        <span className="text-sm font-bold text-slate-700">{dyn.name}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-500 px-1 mt-0.5">
+                      <span className="flex items-center gap-1.5">
+                        当前状态: 
+                        <span className={`font-medium flex items-center gap-1 ${getStatusColorClass(dyn.status)}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${getStatusBgClass(dyn.status)}`} />
+                          {dyn.status}
+                        </span>
+                      </span>
+                      {dyn.time && <span className="font-mono">{dyn.time}</span>}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2.5">
+                      <span className="px-2 py-0.5 text-[10px] font-bold text-white rounded-md shadow-sm bg-orange-500">
+                        {dyn.type}
+                      </span>
+                      <span className="text-sm font-bold text-slate-700">{dyn.name}</span>
+                    </div>
+                    <span className={`text-xs font-medium flex items-center gap-1.5 ${getStatusColorClass(dyn.status)}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${getStatusBgClass(dyn.status)}`} />
                       {dyn.status}
                     </span>
-                  </span>
-                  <span className="font-mono">{dyn.time}</span>
-                </div>
+                  </>
+                )}
               </div>
             ))}
             {dynamics.length === 0 && (
