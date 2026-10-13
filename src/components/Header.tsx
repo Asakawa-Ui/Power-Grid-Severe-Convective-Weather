@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '../lib/utils';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, CloudLightning } from 'lucide-react';
 
 const navItems = ['监测预警', '作业指挥', '效果评估', '装备管理'];
 
@@ -41,15 +41,20 @@ export default function Header({
   const formattedTime = showCaseTime ? formatTime(playbackMinutes, 15) : formatTime(normalMinutes, 0);
 
   return (
-    <header className="absolute top-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md shadow-md z-50 flex items-center justify-between px-6 border-b border-slate-200/80">
-      <div className="flex items-center gap-4 shrink-0">
-        <h1 className="text-xl font-bold text-slate-800 tracking-wide">
+    <header className="absolute top-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md shadow-sm z-50 flex items-center justify-between px-6 border-b border-slate-200/80 select-none">
+      {/* Left: Brand / Title */}
+      <div className="flex items-center gap-3 shrink-0 z-10">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/15">
+          <CloudLightning className="w-4.5 h-4.5" />
+        </div>
+        <h1 className="text-lg font-bold text-slate-800 tracking-wide">
           电网强对流灾害人工干预作业指挥系统
         </h1>
       </div>
 
-      <nav className="flex-1 flex justify-center h-full">
-        <ul className="flex items-center gap-2 h-full">
+      {/* Center: Fixed-centered Primary Navigation (never jumps when switching tabs or controls) */}
+      <nav className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 flex items-center justify-center pointer-events-auto z-10">
+        <ul className="flex items-center gap-1.5 h-full">
           {navItems.map((item) => {
             const isActive = activeNav === item;
             return (
@@ -57,10 +62,10 @@ export default function Header({
                 key={item}
                 onClick={() => setActiveNav(item)}
                 className={cn(
-                  "h-[40px] px-6 rounded-full flex items-center justify-center cursor-pointer text-[15px] font-medium transition-all duration-300",
+                  "h-[40px] px-6 rounded-full flex items-center justify-center cursor-pointer text-[15px] font-medium transition-all duration-200 select-none",
                   isActive 
-                    ? "bg-blue-50 text-blue-600 shadow-sm border border-blue-100" 
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"
+                    ? "bg-blue-50 text-blue-600 shadow-sm border border-blue-200/70 font-bold" 
+                    : "text-slate-600 hover:bg-slate-100/70 hover:text-slate-900"
                 )}
               >
                 {item}
@@ -70,16 +75,15 @@ export default function Header({
         </ul>
       </nav>
 
-      {/* Right control section - flexible width up to 480px to accommodate buttons cleanly */}
-      <div className="flex items-center justify-end gap-4 max-w-[500px] shrink-0">
-        
-        {/* Case Selector Dropdown */}
-        {(isCaseMode || activeNav === '效果评估') && activeNav !== '监测预警' && activeNav !== '装备管理' && (
+      {/* Right: Adaptive Module Controls & Clock */}
+      <div className="flex items-center justify-end gap-3.5 z-10 shrink-0 min-w-[280px]">
+        {/* Case Selector Dropdown (for 效果评估 and 作业指挥历史模式) */}
+        {(activeNav === '效果评估' || (activeNav === '作业指挥' && isCaseMode)) && (
           <div className="relative animate-fade-in flex items-center">
             <select
               value={activeCaseId}
               onChange={(e) => setActiveCaseId?.(e.target.value)}
-              className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm appearance-none cursor-pointer"
+              className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm appearance-none cursor-pointer transition-colors"
             >
               <option value="2026-06-18">2026年6月18日湖北黄石个例</option>
               <option value="2026-07-02">2026年7月02日江苏南京个例 (新布局)</option>
@@ -88,13 +92,13 @@ export default function Header({
           </div>
         )}
 
-        {/* Real-time / Case Study Mode Switcher (only shown for 作业指挥) */}
-        {activeNav !== '监测预警' && activeNav !== '装备管理' && activeNav !== '效果评估' && (
+        {/* Real-time / Case Study Mode Switcher (only for 作业指挥) */}
+        {activeNav === '作业指挥' && (
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
             <button
               onClick={() => onModeChange(false)}
               className={cn(
-                "px-3 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 select-none",
+                "px-3 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 select-none cursor-pointer",
                 !isCaseMode 
                   ? "bg-blue-600 text-white shadow-md shadow-blue-500/10" 
                   : "text-slate-600 hover:text-slate-950 hover:bg-slate-50/50"
@@ -105,7 +109,7 @@ export default function Header({
             <button
               onClick={() => onModeChange(true)}
               className={cn(
-                "px-3 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 select-none",
+                "px-3 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 select-none cursor-pointer",
                 isCaseMode 
                   ? "bg-blue-600 text-white shadow-md shadow-blue-500/10" 
                   : "text-slate-600 hover:text-slate-950 hover:bg-slate-50/50"
@@ -116,7 +120,8 @@ export default function Header({
           </div>
         )}
 
-        <div className="flex items-center gap-3 pr-2">
+        {/* Time and Date - fixed width to avoid sub-pixel layout shifts */}
+        <div className="flex items-center gap-3 pr-2 w-[125px] justify-end">
           <div className="flex flex-col items-end">
             <span className="text-[14px] font-bold font-mono text-slate-800 tracking-wider leading-none">{formattedTime}</span>
             <span className="text-[11px] text-slate-500 font-medium mt-1 leading-none">{formattedDate}</span>

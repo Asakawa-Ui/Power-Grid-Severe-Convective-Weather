@@ -224,30 +224,14 @@ export default function Map3D({
           // WeatherPoint / Site markers
           const siteClass = el.getAttribute('data-site-class') || '';
           const currentType = el.getAttribute('data-site-type') || '';
-          const currentStatus = el.getAttribute('data-site-status') || '';
 
-          let isTypeVisible = false;
-          if (siteClass === 'temporary') {
-            isTypeVisible = vis.temporary;
-          } else if (siteClass === 'mobile') {
-            if (currentType === 'rocket') isTypeVisible = vis.mobileRocket;
-            else if (currentType === 'gun') isTypeVisible = vis.mobileGun;
-          } else if (siteClass === 'fixed') {
-            if (currentType === 'rocket') isTypeVisible = vis.fixedRocket;
-            else if (currentType === 'gun') isTypeVisible = vis.fixedGun;
-          }
+          const isClassVisible = (siteClass === 'mobile' && vis.siteMobile !== false) ||
+                                 (siteClass === 'fixed' && vis.siteFixed !== false);
+          const isWeaponVisible = (currentType === 'rocket' && vis.siteRocket !== false) ||
+                                  (currentType === 'gun' && vis.siteGun !== false);
+          const isTypeVisible = isClassVisible && isWeaponVisible;
 
-          const isStatusVisible = activeNav === '监测预警'
-            ? true
-            : (
-                (currentStatus === 'none' && vis.stateNone) ||
-                (currentStatus === 'ready' && vis.stateReady) ||
-                (currentStatus === 'operating' && vis.stateOperating) ||
-                (currentStatus === 'completed' && vis.stateCompleted) ||
-                (currentStatus === 'canceled' && vis.stateCanceled)
-              );
-
-          el.style.visibility = (isTypeVisible && isStatusVisible) ? 'visible' : 'hidden';
+          el.style.visibility = isTypeVisible ? 'visible' : 'hidden';
         }
       }
     });
@@ -699,37 +683,21 @@ export default function Map3D({
 
               const matchNum = wp.id.match(/\d+/);
               const numVal = matchNum ? parseInt(matchNum[0], 10) : 0;
-              let siteClass = currentType === 'vehicle' ? 'temporary' : (numVal % 2 === 1 ? 'fixed' : 'mobile');
+              let siteClass = numVal % 2 === 1 ? 'fixed' : 'mobile';
               if (activeRegion === '湖北地块' && (wp.id === 'wp-hb-new2' || wp.id === 'wp-hb-new3' || wp.id === 'wp-hb-new6')) {
                 siteClass = 'fixed';
               }
 
               const vis = (window as any).mapLayersVisibilityGranular || {
-                mobileRocket: true, mobileGun: true, fixedRocket: true, fixedGun: true, temporary: true,
-                stateNone: true, stateReady: true, stateOperating: true, stateCompleted: true, stateCanceled: true,
+                siteMobile: true, siteFixed: true, siteRocket: true, siteGun: true,
                 line1000: true, line500: true, line220: true, lineBuffer: true, weatherOverlay: true
               };
 
-              let isTypeVisible = false;
-              if (siteClass === 'temporary') {
-                isTypeVisible = vis.temporary;
-              } else if (siteClass === 'mobile') {
-                if (currentType === 'rocket') isTypeVisible = vis.mobileRocket;
-                else if (currentType === 'gun') isTypeVisible = vis.mobileGun;
-              } else if (siteClass === 'fixed') {
-                if (currentType === 'rocket') isTypeVisible = vis.fixedRocket;
-                else if (currentType === 'gun') isTypeVisible = vis.fixedGun;
-              }
-
-              const isStatusVisible = activeNav === '监测预警'
-                ? true
-                : (
-                    (currentStatus === 'none' && vis.stateNone) ||
-                    (currentStatus === 'ready' && vis.stateReady) ||
-                    (currentStatus === 'operating' && vis.stateOperating) ||
-                    (currentStatus === 'completed' && vis.stateCompleted) ||
-                    (currentStatus === 'canceled' && vis.stateCanceled)
-                  );
+              const isClassVisible = (siteClass === 'mobile' && vis.siteMobile !== false) ||
+                                     (siteClass === 'fixed' && vis.siteFixed !== false);
+              const isWeaponVisible = (currentType === 'rocket' && vis.siteRocket !== false) ||
+                                      (currentType === 'gun' && vis.siteGun !== false);
+              const isTypeVisible = isClassVisible && isWeaponVisible;
 
               const el = document.createElement('div');
               el.className = 'w-4 h-4 flex items-center justify-center relative cursor-pointer group';
@@ -754,46 +722,28 @@ export default function Map3D({
                 el.setAttribute('data-site-status', status || 'none');
 
                 const vis = (window as any).mapLayersVisibilityGranular || {
-                  mobileRocket: true, mobileGun: true, fixedRocket: true, fixedGun: true, temporary: true,
-                  stateNone: true, stateReady: true, stateOperating: true, stateCompleted: true, stateCanceled: true,
+                  siteMobile: true, siteFixed: true, siteRocket: true, siteGun: true,
                   line1000: true, line500: true, line220: true, lineBuffer: true, weatherOverlay: true
                 };
 
-                let isTypeVisible = false;
-                if (siteClass === 'temporary') {
-                  isTypeVisible = vis.temporary;
-                } else if (siteClass === 'mobile') {
-                  if (currentType === 'rocket') isTypeVisible = vis.mobileRocket;
-                  else if (currentType === 'gun') isTypeVisible = vis.mobileGun;
-                } else if (siteClass === 'fixed') {
-                  if (currentType === 'rocket') isTypeVisible = vis.fixedRocket;
-                  else if (currentType === 'gun') isTypeVisible = vis.fixedGun;
-                }
+                const isClassVisible = (siteClass === 'mobile' && vis.siteMobile !== false) ||
+                                       (siteClass === 'fixed' && vis.siteFixed !== false);
+                const isWeaponVisible = (currentType === 'rocket' && vis.siteRocket !== false) ||
+                                        (currentType === 'gun' && vis.siteGun !== false);
+                const isTypeVisible = isClassVisible && isWeaponVisible;
 
-                const isStatusVisible = activeNav === '监测预警'
-                  ? true
-                  : (
-                      (status === 'none' && vis.stateNone) ||
-                      (status === 'ready' && vis.stateReady) ||
-                      (status === 'operating' && vis.stateOperating) ||
-                      (status === 'completed' && vis.stateCompleted) ||
-                      (status === 'canceled' && vis.stateCanceled)
-                    );
-
-                el.style.visibility = (isTypeVisible && isStatusVisible) ? 'visible' : 'hidden';
+                el.style.visibility = isTypeVisible ? 'visible' : 'hidden';
 
                 let shapeSvg = '';
-                if (siteClass === 'temporary') {
-                  shapeSvg = `<svg width="14" height="14" viewBox="0 0 14 14" class="overflow-visible ${colorClass}" style="filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.3))">
-                    <polygon points="7,1 13,12 1,12" fill="${fillColor}" stroke="white" stroke-width="1.5" stroke-linejoin="round" />
-                  </svg>`;
-                } else if (siteClass === 'fixed') {
-                  shapeSvg = `<svg width="14" height="14" viewBox="0 0 14 14" class="overflow-visible ${colorClass}" style="filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.3))">
-                    <rect x="1" y="1" width="12" height="12" rx="1.5" fill="${fillColor}" stroke="white" stroke-width="1.5" />
-                  </svg>`;
-                } else {
+                if (currentType === 'rocket') {
+                  // 火箭弹：圆形
                   shapeSvg = `<svg width="14" height="14" viewBox="0 0 14 14" class="overflow-visible ${colorClass}" style="filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.3))">
                     <circle cx="7" cy="7" r="6" fill="${fillColor}" stroke="white" stroke-width="1.5" />
+                  </svg>`;
+                } else {
+                  // 高炮：方形
+                  shapeSvg = `<svg width="14" height="14" viewBox="0 0 14 14" class="overflow-visible ${colorClass}" style="filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.3))">
+                    <rect x="1" y="1" width="12" height="12" rx="1.5" fill="${fillColor}" stroke="white" stroke-width="1.5" />
                   </svg>`;
                 }
 
@@ -1024,8 +974,7 @@ export default function Map3D({
 
         // Apply initial visibilities from mapLayersVisibilityGranular
         const currentVis = (window as any).mapLayersVisibilityGranular || {
-          rocket: true, gun: true, vehicle: true,
-          stateNone: true, stateReady: true, stateOperating: true, stateCompleted: true, stateCanceled: true,
+          siteMobile: true, siteFixed: true, siteRocket: true, siteGun: true,
           line1000: true, line500: true, line220: true, lineBuffer: true, weatherOverlay: true
         };
         applyGranularVisibility(currentVis);

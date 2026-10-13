@@ -14,16 +14,20 @@ interface MapLayersPanelProps {
 }
 
 export interface MapLayersVisibility {
-  mobileRocket: boolean;
-  mobileGun: boolean;
-  fixedRocket: boolean;
-  fixedGun: boolean;
-  temporary: boolean;
-  stateNone: boolean;
-  stateReady: boolean;
-  stateOperating: boolean;
-  stateCompleted: boolean;
-  stateCanceled: boolean;
+  siteMobile: boolean;
+  siteFixed: boolean;
+  siteRocket: boolean;
+  siteGun: boolean;
+  mobileRocket?: boolean;
+  mobileGun?: boolean;
+  fixedRocket?: boolean;
+  fixedGun?: boolean;
+  temporary?: boolean;
+  stateNone?: boolean;
+  stateReady?: boolean;
+  stateOperating?: boolean;
+  stateCompleted?: boolean;
+  stateCanceled?: boolean;
   line1000: boolean;
   line500: boolean;
   line220: boolean;
@@ -67,16 +71,10 @@ export default function MapLayersPanel({
   // Granular leaf-level visibility state
   const [visibility, setVisibility] = useState<MapLayersVisibility>(() => {
     const defaultState = {
-      mobileRocket: true,
-      mobileGun: true,
-      fixedRocket: true,
-      fixedGun: true,
-      temporary: true,
-      stateNone: true,
-      stateReady: true,
-      stateOperating: true,
-      stateCompleted: true,
-      stateCanceled: true,
+      siteMobile: true,
+      siteFixed: true,
+      siteRocket: true,
+      siteGun: true,
       line1000: true,
       line500: true,
       line220: true,
@@ -341,79 +339,63 @@ export default function MapLayersPanel({
         </button>
         
         {expanded.siteTypes && (
-          <div className="mt-0.5 bg-white/90 backdrop-blur-sm border border-slate-200/50 rounded p-1 flex flex-col gap-1.5">
-            {/* 移动点 */}
-            <div className="flex flex-col gap-1 border-b border-slate-100 pb-1">
-              <div className="flex items-center gap-1 text-[9.5px] font-bold text-slate-700">
-                <svg width="10" height="10" viewBox="0 0 14 14" className="overflow-visible text-blue-500 shrink-0">
-                  <circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                </svg>
-                <span>移动点</span>
-              </div>
-              <div className="flex items-center gap-2 pl-1.5">
-                <label className="flex items-center gap-0.5 cursor-pointer hover:text-blue-600 rounded text-[9px] font-medium text-slate-500">
-                  <input 
-                    type="checkbox"
-                    checked={visibility.mobileRocket}
-                    onChange={() => toggleLeaf('mobileRocket')}
-                    className="w-2.5 h-2.5 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-                  />
-                  <span>火箭</span>
-                </label>
-                <label className="flex items-center gap-0.5 cursor-pointer hover:text-blue-600 rounded text-[9px] font-medium text-slate-500">
-                  <input 
-                    type="checkbox"
-                    checked={visibility.mobileGun}
-                    onChange={() => toggleLeaf('mobileGun')}
-                    className="w-2.5 h-2.5 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-                  />
-                  <span>高炮</span>
-                </label>
-              </div>
+          <div className="mt-0.5 bg-white/90 backdrop-blur-sm border border-slate-200/50 rounded p-1 flex flex-col gap-1">
+            {/* 移动点 & 固定点 勾选筛选 */}
+            <div className="flex flex-col gap-0.5 border-b border-slate-100 pb-1">
+              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-700">
+                <input 
+                  type="checkbox"
+                  checked={visibility.siteMobile !== false}
+                  onChange={() => toggleLeaf('siteMobile')}
+                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
+                />
+                <span className="truncate">移动点</span>
+              </label>
+
+              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-700">
+                <input 
+                  type="checkbox"
+                  checked={visibility.siteFixed !== false}
+                  onChange={() => toggleLeaf('siteFixed')}
+                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
+                />
+                <span className="truncate">固定点</span>
+              </label>
             </div>
 
-            {/* 固定点 */}
-            <div className="flex flex-col gap-1 border-b border-slate-100 pb-1">
-              <div className="flex items-center gap-1 text-[9.5px] font-bold text-slate-700">
+            {/* 火箭弹 (圆形) & 高炮 (方形) 勾选筛选与图例 */}
+            <div className="flex flex-col gap-0.5 pt-0.5">
+              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-700">
+                <input 
+                  type="checkbox"
+                  checked={visibility.siteRocket !== false}
+                  onChange={() => toggleLeaf('siteRocket')}
+                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
+                />
                 <svg width="10" height="10" viewBox="0 0 14 14" className="overflow-visible text-blue-500 shrink-0">
-                  <rect x="1" y="1" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                  <circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
                 </svg>
-                <span>固定点</span>
-              </div>
-              <div className="flex items-center gap-2 pl-1.5">
-                <label className="flex items-center gap-0.5 cursor-pointer hover:text-blue-600 rounded text-[9px] font-medium text-slate-500">
-                  <input 
-                    type="checkbox"
-                    checked={visibility.fixedRocket}
-                    onChange={() => toggleLeaf('fixedRocket')}
-                    className="w-2.5 h-2.5 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-                  />
-                  <span>火箭</span>
-                </label>
-                <label className="flex items-center gap-0.5 cursor-pointer hover:text-blue-600 rounded text-[9px] font-medium text-slate-500">
-                  <input 
-                    type="checkbox"
-                    checked={visibility.fixedGun}
-                    onChange={() => toggleLeaf('fixedGun')}
-                    className="w-2.5 h-2.5 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-                  />
-                  <span>高炮</span>
-                </label>
-              </div>
-            </div>
+                <span className="truncate">火箭弹</span>
+              </label>
 
-            {/* 临时点 */}
-            <div className="flex items-center gap-1 text-[9.5px] font-bold text-slate-700 pl-0.5">
-              <svg width="10" height="10" viewBox="0 0 14 14" className="overflow-visible text-blue-500 shrink-0">
-                <polygon points="7,1 13,11 1,11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-              </svg>
-              <span>临时点</span>
+              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-700">
+                <input 
+                  type="checkbox"
+                  checked={visibility.siteGun !== false}
+                  onChange={() => toggleLeaf('siteGun')}
+                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
+                />
+                <svg width="10" height="10" viewBox="0 0 14 14" className="overflow-visible text-orange-500 shrink-0">
+                  <rect x="1.5" y="1.5" width="11" height="11" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+                <span className="truncate">高炮</span>
+              </label>
             </div>
           </div>
         )}
       </div>
 
-      {/* Category 2: 作业状态 */}
+      {/* Category 2: 作业状态 (无勾选功能，纯状态图例展示) */}
       {activeNav !== '监测预警' && (
         <div className="flex flex-col">
           <button 
@@ -425,50 +407,30 @@ export default function MapLayersPanel({
           </button>
 
           {expanded.states && (
-            <div className="mt-0.5 bg-white/90 backdrop-blur-sm border border-slate-200/50 rounded p-1 flex flex-col gap-0.5">
-              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
-                <input 
-                  type="checkbox"
-                  checked={visibility.stateNone}
-                  onChange={() => toggleLeaf('stateNone')}
-                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-                />
+            <div className="mt-0.5 bg-white/90 backdrop-blur-sm border border-slate-200/50 rounded p-1 flex flex-col gap-0.5 select-none">
+              <div className="flex items-center gap-1 p-0.5 text-[9.5px] font-medium text-slate-600">
+                <div className="w-3 h-3 shrink-0" aria-hidden="true" />
                 <div className="w-2 h-2 rounded-full bg-[#94a3b8] shrink-0" />
                 <span className="truncate">无状态</span>
-              </label>
+              </div>
 
-              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
-                <input 
-                  type="checkbox"
-                  checked={visibility.stateReady}
-                  onChange={() => toggleLeaf('stateReady')}
-                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-                />
+              <div className="flex items-center gap-1 p-0.5 text-[9.5px] font-medium text-slate-600">
+                <div className="w-3 h-3 shrink-0" aria-hidden="true" />
                 <div className="w-2 h-2 rounded-full bg-[#84b676] shrink-0" />
                 <span className="truncate">就绪</span>
-              </label>
+              </div>
 
-              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
-                <input 
-                  type="checkbox"
-                  checked={visibility.stateOperating}
-                  onChange={() => toggleLeaf('stateOperating')}
-                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-                />
+              <div className="flex items-center gap-1 p-0.5 text-[9.5px] font-medium text-slate-600">
+                <div className="w-3 h-3 shrink-0" aria-hidden="true" />
                 <div className="w-2 h-2 rounded-full bg-[#e3d122] shrink-0" />
                 <span className="truncate">作业</span>
-              </label>
+              </div>
 
-              <label className="flex items-center gap-1 cursor-pointer p-0.5 hover:bg-slate-50 rounded text-[9.5px] font-medium text-slate-600">
-                <input 
-                  type="checkbox"
-                  checked={visibility.stateCompleted}
-                  onChange={() => toggleLeaf('stateCompleted')}
-                  className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-0 shrink-0 cursor-pointer"
-                />
+              <div className="flex items-center gap-1 p-0.5 text-[9.5px] font-medium text-slate-600">
+                <div className="w-3 h-3 shrink-0" aria-hidden="true" />
                 <div className="w-2 h-2 rounded-full bg-[#8b10ec] shrink-0" />
                 <span className="truncate">完成</span>
-              </label>
+              </div>
             </div>
           )}
         </div>

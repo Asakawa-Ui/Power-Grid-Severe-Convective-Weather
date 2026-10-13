@@ -28,7 +28,7 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
   if (isCaseMode) {
     if (playbackMinutes >= 11) {
       commands.push({
-        type: '火箭',
+        type: '火箭弹',
         name: '白沙作业点',
         time: '2026-06-18 15:11',
         actionTime: '15:18',
@@ -40,7 +40,7 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
     }
     if (playbackMinutes >= 21) {
       commands.push({
-        type: '火箭',
+        type: '火箭弹',
         name: '刘仁八作业点',
         time: '2026-06-18 15:21',
         actionTime: '15:28',
@@ -52,7 +52,7 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
     }
     if (playbackMinutes >= 131) {
       commands.push({
-        type: '火箭',
+        type: '火箭弹',
         name: '大冶金湖作业点',
         time: '2026-06-18 17:11',
         actionTime: '17:18',
@@ -67,7 +67,7 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
 
     if (playbackMinutes >= 133) {
       dynamics.push({
-        type: '火箭',
+        type: '火箭弹',
         name: '大冶金湖作业点',
         id: '420281002',
         status: playbackMinutes >= 139 ? '完成' : playbackMinutes >= 138 ? '作业' : '就绪',
@@ -76,7 +76,7 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
     }
     if (playbackMinutes >= 23) {
       dynamics.push({
-        type: '火箭',
+        type: '火箭弹',
         name: '刘仁八作业点',
         id: '420281004',
         status: playbackMinutes >= 29 ? '完成' : playbackMinutes >= 28 ? '作业' : '就绪',
@@ -85,7 +85,7 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
     }
     if (playbackMinutes >= 13) {
       dynamics.push({
-        type: '火箭',
+        type: '火箭弹',
         name: '白沙作业点',
         id: '422324004',
         status: playbackMinutes >= 19 ? '完成' : playbackMinutes >= 18 ? '作业' : '就绪',
@@ -98,17 +98,17 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
       { type: '高炮', name: '姜祥村作业点', time: curTime, count: '40发', angle: '45°', azimuth: '225°', status: '待下发' },
       { type: '高炮', name: '铁山南作业点', time: curTime, count: '40发', angle: '42°', azimuth: '210°', status: '待下发' },
       { type: '高炮', name: '沿湖生态园作业点', time: curTime, count: '40发', angle: '40°', azimuth: '205°', status: '待下发' },
-      { type: '火箭', name: '大冶金湖作业点', time: curTime, count: '8发', angle: '55°', azimuth: '160°', status: '待下发' },
+      { type: '火箭弹', name: '大冶金湖作业点', time: curTime, count: '8发', angle: '55°', azimuth: '160°', status: '待下发' },
     ];
 
     dynamics = [
       { type: '高炮', name: '姜祥村作业点', id: '420222001', status: '就绪', time: '' },
       { type: '高炮', name: '铁山南作业点', id: '420222002', status: '就绪', time: '' },
       { type: '高炮', name: '沿湖生态园作业点', id: '420281005', status: '就绪', time: '' },
-      { type: '火箭', name: '大冶金湖作业点', id: '420281002', status: '就绪', time: '' },
-      { type: '火箭', name: '白沙作业点', id: '422324004', status: '就绪', time: '' },
+      { type: '火箭弹', name: '大冶金湖作业点', id: '420281002', status: '就绪', time: '' },
+      { type: '火箭弹', name: '白沙作业点', id: '422324004', status: '就绪', time: '' },
       { type: '高炮', name: '太子作业点', id: '420222003', status: '就绪', time: '' },
-      { type: '火箭', name: '刘仁八作业点', id: '420281004', status: '就绪', time: '' },
+      { type: '火箭弹', name: '刘仁八作业点', id: '420281004', status: '就绪', time: '' },
     ];
   }
 
@@ -150,7 +150,7 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <span className="px-2 py-0.5 text-[10px] font-bold text-white rounded-md shadow-sm bg-orange-500">
+                      <span className={`px-2 py-0.5 text-[10px] font-bold text-white rounded-md shadow-sm ${cmd.type.includes('火箭') ? 'bg-blue-500' : 'bg-orange-500'}`}>
                         {cmd.type}
                       </span>
                       <span className="text-sm font-bold text-slate-700">{cmd.name}</span>
@@ -226,13 +226,13 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent('map-focus-site', { detail: { siteName: dyn.name } }));
                 }}
-                className={`bg-gradient-to-r from-slate-50 to-white border border-slate-100 rounded-lg p-3 shadow-sm transition-all hover:shadow-md hover:border-blue-200/60 cursor-pointer active:bg-slate-100/50 ${isCaseMode ? 'flex flex-col gap-2' : 'flex items-center justify-between'}`}
+                className={`bg-gradient-to-r from-slate-50 to-white border border-slate-100 rounded-lg shadow-sm transition-all hover:shadow-md hover:border-blue-200/60 cursor-pointer active:bg-slate-100/50 ${isCaseMode ? 'p-3 flex flex-col gap-2' : 'py-2.5 px-3 flex items-center justify-between'}`}
               >
                 {isCaseMode ? (
                   <>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <span className="px-2 py-0.5 text-[10px] font-bold text-white rounded-md shadow-sm bg-orange-500">
+                        <span className={`px-2 py-0.5 text-[10px] font-bold text-white rounded-md shadow-sm ${dyn.type.includes('火箭') ? 'bg-blue-500' : 'bg-orange-500'}`}>
                           {dyn.type}
                         </span>
                         <span className="text-sm font-bold text-slate-700">{dyn.name}</span>
@@ -252,7 +252,7 @@ export default function OperationCommandRight({ isCaseMode = false, playbackMinu
                 ) : (
                   <>
                     <div className="flex items-center gap-2.5">
-                      <span className="px-2 py-0.5 text-[10px] font-bold text-white rounded-md shadow-sm bg-orange-500">
+                      <span className={`px-2 py-0.5 text-[10px] font-bold text-white rounded-md shadow-sm ${dyn.type.includes('火箭') ? 'bg-blue-500' : 'bg-orange-500'}`}>
                         {dyn.type}
                       </span>
                       <span className="text-sm font-bold text-slate-700">{dyn.name}</span>
