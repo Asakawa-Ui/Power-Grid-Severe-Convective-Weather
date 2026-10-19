@@ -101,3 +101,8 @@
   border-bottom-color: transparent !important;
   border-right-color: transparent !important;
 }
+
+/* In 效果评估 mode, hide default MapLibre navigation control in top right */
+.map-effect-eval-mode .maplibregl-ctrl-top-right {
+  display: none !important;
+}

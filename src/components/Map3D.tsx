@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as turf from '@turf/turf';
+import { RotateCcw, Box } from 'lucide-react';
 import { powerLines } from '../utils/powerLines';
 import { weatherPoints, WeatherPoint } from '../utils/weatherPoints';
 import { warningAreas } from "../utils/warningAreas";
@@ -189,6 +190,7 @@ export default function Map3D({
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [mapType, setMapType] = useState<'vec' | 'img' | 'ter'>('ter');
   const [mapInitError, setMapInitError] = useState<Error | null>(null);
+  const [is3DMode, setIs3DMode] = useState(false);
 
   // If map initialization failed fatally, throw to let MapErrorBoundary catch it
   if (mapInitError) {
@@ -1349,9 +1351,59 @@ export default function Map3D({
   const formattedDateStr = isCaseMode ? '2026-06-18' : '2026-07-07';
   const radarLabel = `全国组网-组合反射率 ${formattedDateStr} ${formattedTimeStr}`;
 
+  const handleResetEvaluationView = () => {
+    const mapInstance = map.current;
+    if (!mapInstance) return;
+    try {
+      const siteDetails = getHistorySiteDetails(selectedHistoryId, isCaseMode, activeCaseId);
+      const start = siteDetails.coord;
+      const azimuthVal = parseInt(siteDetails.azimuth) || 225;
+      const bearingRad = (azimuthVal * Math.PI) / 180;
+
+      const riskCenter: [number, number] = [
+        start[0] + 0.035 * Math.sin(bearingRad),
+        start[1] + 0.035 * Math.cos(bearingRad)
+      ];
+
+      mapInstance.flyTo({
+        center: [riskCenter[0], riskCenter[1]],
+        zoom: 12.0,
+        pitch: 52,
+        bearing: azimuthVal - 180,
+        duration: 1500
+      });
+    } catch (e) {
+      console.warn('Error resetting evaluation view:', e);
+    }
+  };
+
   return (
-    <div className="absolute inset-0 z-0">
+    <div className={`absolute inset-0 z-0 ${activeNav === '效果评估' ? 'map-effect-eval-mode' : ''}`}>
       <div ref={mapContainer} className="w-full h-full bg-slate-200" />
+
+      {/* 效果评估右上角操作按钮：复位 & 三维显示（纯图标） */}
+      {activeNav === '效果评估' && (
+        <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5 select-none pointer-events-auto">
+          <button
+            onClick={handleResetEvaluationView}
+            className="w-7 h-7 bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-md shadow-sm hover:bg-slate-50 hover:border-blue-300 active:scale-95 flex items-center justify-center transition-all cursor-pointer group"
+            title="复位视角"
+          >
+            <RotateCcw className="w-4 h-4 text-slate-600 group-hover:text-blue-600 transition-colors" />
+          </button>
+          <button
+            onClick={() => setIs3DMode(prev => !prev)}
+            className={`w-7 h-7 bg-white/95 backdrop-blur-sm border rounded-md shadow-sm hover:bg-slate-50 active:scale-95 flex items-center justify-center transition-all cursor-pointer group ${
+              is3DMode 
+                ? 'border-blue-400 bg-blue-50/80 shadow-blue-100/50' 
+                : 'border-slate-200/80 hover:border-blue-300'
+            }`}
+            title="三维显示"
+          >
+            <Box className={`w-4 h-4 transition-colors ${is3DMode ? 'text-blue-600' : 'text-slate-600 group-hover:text-blue-600'}`} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
