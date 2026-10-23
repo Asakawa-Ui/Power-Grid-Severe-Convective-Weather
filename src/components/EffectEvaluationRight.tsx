@@ -1,27 +1,27 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ReferenceArea, ReferenceLine, ComposedChart } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ReferenceLine, ComposedChart } from 'recharts';
 import { Target, Clock, Rocket, ArrowUpRight, Navigation, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 
 export const liveHistoryData = [
-  { id: 'h1', type: '火箭', location: '姜祥村作业点', date: '2026-07-07 18:30', time: '18:45', ammo: '8发', angle: '45°', azimuth: '225°', status: '合理' },
-  { id: 'h2', type: '火箭', location: '铁山南作业点', date: '2026-07-07 18:25', time: '18:38', ammo: '6发', angle: '42°', azimuth: '210°', status: '合理' },
-  { id: 'h3', type: '火箭', location: '白沙作业点', date: '2026-07-07 18:15', time: '18:28', ammo: '12发', angle: '55°', azimuth: '160°', status: '合理' },
+  { id: 'h7', type: '火箭弹', location: '陈贵镇作业点', date: '2026-07-01 16:30', time: '16:40', ammo: '16发', angle: '48°', azimuth: '200°', status: '合理' },
+  { id: 'h6', type: '高炮', location: '金牛镇作业点', date: '2026-07-02 14:15', time: '14:22', ammo: '10发', angle: '50°', azimuth: '180°', status: '合理' },
   { id: 'h4', type: '高炮', location: '大冶金湖作业点', date: '2026-07-03 11:45', time: '11:57', ammo: '8发', angle: '45°', azimuth: '225°', status: '合理' },
   { id: 'h5', type: '高炮', location: '刘仁八作业点', date: '2026-07-03 11:45', time: '11:57', ammo: '8发', angle: '45°', azimuth: '225°', status: '合理' },
-  { id: 'h6', type: '高炮', location: '金牛镇作业点', date: '2026-07-02 14:15', time: '14:22', ammo: '10发', angle: '50°', azimuth: '180°', status: '合理' },
-  { id: 'h7', type: '火箭', location: '陈贵镇作业点', date: '2026-07-01 16:30', time: '16:40', ammo: '16发', angle: '48°', azimuth: '200°', status: '合理' }
+  { id: 'h3', type: '火箭弹', location: '白沙作业点', date: '2026-07-07 18:15', time: '18:28', ammo: '12发', angle: '55°', azimuth: '160°', status: '合理' },
+  { id: 'h2', type: '火箭弹', location: '铁山南作业点', date: '2026-07-07 18:25', time: '18:38', ammo: '6发', angle: '42°', azimuth: '210°', status: '合理' },
+  { id: 'h1', type: '火箭弹', location: '姜祥村作业点', date: '2026-07-07 18:30', time: '18:45', ammo: '8发', angle: '45°', azimuth: '225°', status: '合理' }
 ];
 
 export const caseHistoryData = [
-  { id: 'c1', type: '火箭', location: '大冶金湖作业点', date: '2026-06-18 17:18', time: '17:19', ammo: '4发', angle: '48°', azimuth: '200°', status: '合理' },
-  { id: 'c2', type: '火箭', location: '刘仁八作业点', date: '2026-06-18 15:28', time: '15:29', ammo: '4发', angle: '56°', azimuth: '215°', status: '合理' },
-  { id: 'c3', type: '火箭', location: '白沙作业点', date: '2026-06-18 15:18', time: '15:19', ammo: '4发', angle: '45°', azimuth: '210°', status: '合理' }
+  { id: 'c3', type: '火箭弹', location: '白沙作业点', date: '2026-06-18 15:18', time: '15:19', ammo: '4发', angle: '45°', azimuth: '210°', status: '合理' },
+  { id: 'c2', type: '火箭弹', location: '刘仁八作业点', date: '2026-06-18 15:28', time: '15:29', ammo: '4发', angle: '56°', azimuth: '215°', status: '合理' },
+  { id: 'c1', type: '火箭弹', location: '大冶金湖作业点', date: '2026-06-18 17:18', time: '17:19', ammo: '4发', angle: '48°', azimuth: '200°', status: '合理' }
 ];
 
 export const nanjingHistoryData = [
-  { id: 'n1', type: '火箭', location: '三道沟火箭点', date: '2026-07-02 15:30', time: '15:42', ammo: '8发', angle: '45°', azimuth: '180°', status: '合理' },
+  { id: 'n3', type: '高炮', location: '大杨树作业点', date: '2026-07-02 15:10', time: '15:25', ammo: '35发', angle: '48°', azimuth: '150°', status: '合理' },
   { id: 'n2', type: '高炮', location: '太平庄高炮站', date: '2026-07-02 15:20', time: '15:35', ammo: '40发', angle: '52°', azimuth: '120°', status: '合理' },
-  { id: 'n3', type: '高炮', location: '大杨树作业点', date: '2026-07-02 15:10', time: '15:25', ammo: '35发', angle: '48°', azimuth: '150°', status: '合理' }
+  { id: 'n1', type: '火箭弹', location: '三道沟火箭点', date: '2026-07-02 15:30', time: '15:42', ammo: '8发', angle: '45°', azimuth: '180°', status: '合理' }
 ];
 
 export const historyData = liveHistoryData;
@@ -118,7 +118,55 @@ interface RightChartsProps {
   activeCaseId?: string;
 }
 
-export function EffectEvaluationRightCharts({ selectedHistoryId = 'h1', setSelectedHistoryId, isCaseMode = false, activeCaseId = '2026-06-18' }: RightChartsProps) {
+// 爆炸点区域雷达反射率专属 Tooltip：根据设计规范还原白底卡片、虚线分割线、左侧色块线与右侧带单位数值
+const RadarDbzTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const dataPoint = payload[0]?.payload || {};
+  const timeLabel = label || dataPoint.time || '';
+
+  const itemsConfig = [
+    { key: 'dbz_30_40', label: '30~40dBZ', color: '#3b82f6', unit: 'km²' },
+    { key: 'dbz_40_50', label: '40~50dBZ', color: '#f97316', unit: 'km²' },
+    { key: 'dbz_50_55', label: '50~55dBZ', color: '#22c55e', unit: 'km²' },
+    { key: 'dbz_above_55', label: '>55dBZ', color: '#ef4444', unit: 'km²' },
+    { key: 'max_ref', label: '最大反射率', color: '#a855f7', unit: 'dBZ' },
+  ];
+
+  return (
+    <div className="bg-white/95 backdrop-blur-md rounded-xl px-3 py-2.5 shadow-xl border border-slate-200/90 text-xs min-w-[155px] pointer-events-none select-none">
+      <div className="text-[13px] font-bold text-slate-800 font-mono tracking-tight pb-1 mb-0.5">
+        {timeLabel}
+      </div>
+
+      <div className="space-y-0.5">
+        {itemsConfig.map((item, idx) => {
+          const val = dataPoint[item.key] !== undefined ? dataPoint[item.key] : '--';
+          return (
+            <div key={item.key}>
+              {idx > 0 && <div className="border-t border-dashed border-slate-200/80 my-0.5" />}
+              <div className="flex items-center justify-between gap-4 py-1 leading-tight">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span
+                    className="w-3.5 h-[2px] rounded-full shrink-0"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="text-[11px] font-medium text-slate-700">{item.label}</span>
+                </div>
+                <div className="font-mono shrink-0 flex items-baseline gap-1">
+                  <span className="font-bold text-slate-900 text-xs">{val}</span>
+                  <span className="text-[10px] text-slate-400 font-normal">{item.unit}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+export function EffectEvaluationRightCharts({ selectedHistoryId = 'n1', setSelectedHistoryId, isCaseMode = false, activeCaseId = '2026-07-02' }: RightChartsProps) {
   const [activeTab1, setActiveTab1] = useState<string>('反射率因子');
   const [activeTab2, setActiveTab2] = useState<string>('反射率因子');
 
@@ -508,11 +556,11 @@ export function EffectEvaluationRightCharts({ selectedHistoryId = 'h1', setSelec
           </div>
         </div>
 
-        {/* Trend line chart with custom side legend */}
-        <div className="flex-1 min-h-0 w-full mt-0.5 flex relative">
+        {/* Trend line chart with horizontal bottom legend */}
+        <div className="flex-1 min-h-0 w-full mt-0.5 flex flex-col relative">
           
           {/* Chart area container */}
-          <div className="flex-1 h-full relative">
+          <div className="flex-1 min-h-0 w-full relative">
             {/* Top X/Y Axis Labels placed perfectly above the axes ticks with a clean gap */}
             <div className="absolute left-[7px] top-[0px] w-[28px] text-center text-[8px] text-slate-400 font-medium font-sans select-none pointer-events-none">km²</div>
             <div className="absolute right-[7px] top-[0px] w-[28px] text-center text-[8px] text-slate-400 font-medium font-sans select-none pointer-events-none">dBZ</div>
@@ -551,13 +599,9 @@ export function EffectEvaluationRightCharts({ selectedHistoryId = 'h1', setSelec
                   tickMargin={2}
                 />
                 <Tooltip 
-                  contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '8px', fontSize: '9px', color: '#fff' }}
-                />
-                <ReferenceArea 
-                  yAxisId="left"
-                  x1={dynamicTimes[2]} 
-                  x2={dynamicTimes[4]} 
-                  {...({ fill: '#22c55e', fillOpacity: 0.06 } as any)}
+                  content={<RadarDbzTooltip />}
+                  wrapperStyle={{ zIndex: 100, pointerEvents: 'none' }}
+                  cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '3 3' }}
                 />
                 <ReferenceLine 
                   yAxisId="left"
@@ -579,51 +623,46 @@ export function EffectEvaluationRightCharts({ selectedHistoryId = 'h1', setSelec
                 <Line yAxisId="left" type="monotone" dataKey="dbz_40_50" stroke="#f97316" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="40~50dBZ" />
                 <Line yAxisId="left" type="monotone" dataKey="dbz_50_55" stroke="#22c55e" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="50~55dBZ" />
                 <Line yAxisId="left" type="monotone" dataKey="dbz_above_55" stroke="#ef4444" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name=">55dBZ" />
-                <Line yAxisId="right" type="monotone" dataKey="max_ref" stroke="#a855f7" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="MAX_REF" />
+                <Line yAxisId="right" type="monotone" dataKey="max_ref" stroke="#a855f7" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="最大反射率" />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Custom Side/Overlay Legend styled EXACTLY like the user picture with straight line indicators */}
-          <div className="w-[82px] h-full flex flex-col justify-center gap-1 border-l border-slate-100 pl-2 select-none">
+          {/* Horizontal Bottom Legend */}
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 pb-0.5 select-none shrink-0 border-t border-slate-100/80">
             <div className="flex items-center gap-1">
-              <div className="w-4 h-2 flex items-center justify-center relative">
+              <div className="w-3.5 h-1.5 flex items-center justify-center relative">
                 <div className="w-full h-[1.5px] bg-[#3b82f6] rounded-full" />
               </div>
               <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">30~40dBZ</span>
             </div>
 
             <div className="flex items-center gap-1">
-              <div className="w-4 h-2 flex items-center justify-center relative">
+              <div className="w-3.5 h-1.5 flex items-center justify-center relative">
                 <div className="w-full h-[1.5px] bg-[#f97316] rounded-full" />
               </div>
               <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">40~50dBZ</span>
             </div>
 
             <div className="flex items-center gap-1">
-              <div className="w-4 h-2 flex items-center justify-center relative">
+              <div className="w-3.5 h-1.5 flex items-center justify-center relative">
                 <div className="w-full h-[1.5px] bg-[#22c55e] rounded-full" />
               </div>
               <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">50~55dBZ</span>
             </div>
 
             <div className="flex items-center gap-1">
-              <div className="w-4 h-2 flex items-center justify-center relative">
+              <div className="w-3.5 h-1.5 flex items-center justify-center relative">
                 <div className="w-full h-[1.5px] bg-[#ef4444] rounded-full" />
               </div>
               <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">&gt;55dBZ</span>
             </div>
 
             <div className="flex items-center gap-1">
-              <div className="w-4 h-2 flex items-center justify-center relative">
+              <div className="w-3.5 h-1.5 flex items-center justify-center relative">
                 <div className="w-full h-[1.5px] bg-[#a855f7] rounded-full" />
               </div>
-              <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">MAX_REF</span>
-            </div>
-
-            <div className="flex items-center gap-1 mt-0.5">
-              <div className="w-4 h-2 bg-[#22c55e]/20 border border-[#22c55e]/30 rounded-sm" />
-              <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">作业时刻</span>
+              <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">最大反射率</span>
             </div>
           </div>
         </div>
@@ -632,7 +671,7 @@ export function EffectEvaluationRightCharts({ selectedHistoryId = 'h1', setSelec
   );
 }
 
-export function RadarReflectivityStatChange({ selectedHistoryId = 'h1', isCaseMode = false, activeCaseId = '2026-06-18' }: { selectedHistoryId?: string; isCaseMode?: boolean; activeCaseId?: string }) {
+export function RadarReflectivityStatChange({ selectedHistoryId = 'n1', isCaseMode = false, activeCaseId = '2026-07-02' }: { selectedHistoryId?: string; isCaseMode?: boolean; activeCaseId?: string }) {
   const siteDetails = getHistorySiteDetails(selectedHistoryId, isCaseMode, activeCaseId);
   const startTimeStr = siteDetails.date.split(' ')[1] || '17:00';
   const dynamicTimes = getDynamicTimeRange(startTimeStr);
@@ -665,10 +704,10 @@ export function RadarReflectivityStatChange({ selectedHistoryId = 'h1', isCaseMo
         </div>
       </div>
 
-      {/* Trend line chart with custom side legend */}
-      <div className="flex-1 min-h-0 w-full mt-1.5 flex relative">
+      {/* Trend line chart with horizontal bottom legend */}
+      <div className="flex-1 min-h-0 w-full mt-1.5 flex flex-col relative">
         {/* Chart area container */}
-        <div className="flex-1 h-full relative">
+        <div className="flex-1 min-h-0 w-full relative">
           {/* Top X/Y Axis Labels placed perfectly above the axes ticks with a clean gap */}
           <div className="absolute left-[7px] top-[0px] w-[28px] text-center text-[8px] text-slate-400 font-medium font-sans select-none pointer-events-none">km²</div>
           <div className="absolute right-[7px] top-[0px] w-[28px] text-center text-[8px] text-slate-400 font-medium font-sans select-none pointer-events-none">dBZ</div>
@@ -707,13 +746,9 @@ export function RadarReflectivityStatChange({ selectedHistoryId = 'h1', isCaseMo
                 tickMargin={2}
               />
               <Tooltip 
-                contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '8px', fontSize: '9px', color: '#fff' }}
-              />
-              <ReferenceArea 
-                yAxisId="left"
-                x1={dynamicTimes[2]} 
-                x2={dynamicTimes[4]} 
-                {...({ fill: '#22c55e', fillOpacity: 0.06 } as any)}
+                content={<RadarDbzTooltip />}
+                wrapperStyle={{ zIndex: 100, pointerEvents: 'none' }}
+                cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '3 3' }}
               />
               <ReferenceLine 
                 yAxisId="left"
@@ -735,51 +770,46 @@ export function RadarReflectivityStatChange({ selectedHistoryId = 'h1', isCaseMo
               <Line yAxisId="left" type="monotone" dataKey="dbz_40_50" stroke="#f97316" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="40~50dBZ" />
               <Line yAxisId="left" type="monotone" dataKey="dbz_50_55" stroke="#22c55e" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="50~55dBZ" />
               <Line yAxisId="left" type="monotone" dataKey="dbz_above_55" stroke="#ef4444" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name=">55dBZ" />
-              <Line yAxisId="right" type="monotone" dataKey="max_ref" stroke="#a855f7" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="MAX_REF" />
+              <Line yAxisId="right" type="monotone" dataKey="max_ref" stroke="#a855f7" strokeWidth={1.5} dot={false} activeDot={{ r: 3 }} name="最大反射率" />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Custom Side/Overlay Legend styled EXACTLY like the user picture with straight line indicators */}
-        <div className="w-[82px] h-full flex flex-col justify-center gap-1 border-l border-slate-100 pl-2 select-none">
+        {/* Horizontal Bottom Legend */}
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 pb-0.5 select-none shrink-0 border-t border-slate-100/80">
           <div className="flex items-center gap-1">
-            <div className="w-4 h-2 flex items-center justify-center relative">
+            <div className="w-3.5 h-1.5 flex items-center justify-center relative">
               <div className="w-full h-[1.5px] bg-[#3b82f6] rounded-full" />
             </div>
             <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">30~40dBZ</span>
           </div>
 
           <div className="flex items-center gap-1">
-            <div className="w-4 h-2 flex items-center justify-center relative">
+            <div className="w-3.5 h-1.5 flex items-center justify-center relative">
               <div className="w-full h-[1.5px] bg-[#f97316] rounded-full" />
             </div>
             <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">40~50dBZ</span>
           </div>
 
           <div className="flex items-center gap-1">
-            <div className="w-4 h-2 flex items-center justify-center relative">
+            <div className="w-3.5 h-1.5 flex items-center justify-center relative">
               <div className="w-full h-[1.5px] bg-[#22c55e] rounded-full" />
             </div>
             <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">50~55dBZ</span>
           </div>
 
           <div className="flex items-center gap-1">
-            <div className="w-4 h-2 flex items-center justify-center relative">
+            <div className="w-3.5 h-1.5 flex items-center justify-center relative">
               <div className="w-full h-[1.5px] bg-[#ef4444] rounded-full" />
             </div>
             <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">&gt;55dBZ</span>
           </div>
 
           <div className="flex items-center gap-1">
-            <div className="w-4 h-2 flex items-center justify-center relative">
+            <div className="w-3.5 h-1.5 flex items-center justify-center relative">
               <div className="w-full h-[1.5px] bg-[#a855f7] rounded-full" />
             </div>
-            <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">MAX_REF</span>
-          </div>
-
-          <div className="flex items-center gap-1 mt-0.5">
-            <div className="w-4 h-2 bg-[#22c55e]/20 border border-[#22c55e]/30 rounded-sm" />
-            <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">作业时刻</span>
+            <span className="text-[9px] font-sans text-slate-600 font-medium whitespace-nowrap">最大反射率</span>
           </div>
         </div>
       </div>
@@ -794,13 +824,20 @@ interface HistoryListProps {
   activeCaseId?: string;
 }
 
-export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHistoryId, isCaseMode = false, activeCaseId = '2026-06-18' }: HistoryListProps) {
+export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHistoryId, isCaseMode = false, activeCaseId = '2026-07-02' }: HistoryListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const activeHistoryData = isCaseMode 
+  const rawHistoryData = isCaseMode 
     ? (activeCaseId === '2026-07-02' ? nanjingHistoryData : caseHistoryData)
     : liveHistoryData;
+
+  // 列表按照作业开始时间正序排列
+  const activeHistoryData = [...rawHistoryData].sort((a, b) => {
+    const timeA = new Date(a.date.replace(/-/g, '/')).getTime();
+    const timeB = new Date(b.date.replace(/-/g, '/')).getTime();
+    return timeA - timeB;
+  });
 
   const totalPages = Math.ceil(activeHistoryData.length / itemsPerPage);
   // Ensure current page is valid when total pages change
@@ -855,9 +892,9 @@ export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHist
                     {globalIndex}.
                   </span>
                   <span className={`px-1.5 py-0.5 text-[9px] font-bold text-white rounded shadow-xs ${
-                    card.type === '火箭' ? 'bg-orange-500' : 'bg-blue-500'
+                    card.type.includes('火箭') ? 'bg-[#3b82f6]' : 'bg-[#10b981]'
                   }`}>
-                    {card.type}
+                    {card.type === '火箭' ? '火箭弹' : card.type}
                   </span>
                   <span className="text-xs font-bold text-slate-800 ml-0.5">{card.location}</span>
                 </div>

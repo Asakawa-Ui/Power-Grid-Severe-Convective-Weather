@@ -24,14 +24,14 @@ import EquipmentManagementLeft from './components/EquipmentManagementLeft';
 import EquipmentManagementRight from './components/EquipmentManagementRight';
 
 export default function App() {
-  const [activeRegion, setActiveRegion] = useState('湖北地块');
   const [activeNav, setActiveNav] = useState('作业指挥'); // default to the newly requested view for easy viewing
+  const [activeRegion, setActiveRegion] = useState(() => activeNav === '效果评估' ? '江苏地块' : '湖北地块');
   const [selectedPoint, setSelectedPoint] = useState<WeatherPoint | null>(null);
-  const [selectedHistoryId, setSelectedHistoryId] = useState<string>('h1');
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string>(() => activeNav === '效果评估' ? 'n1' : 'h1');
   
   // Case Study Mode playback states
-  const [isCaseMode, setIsCaseMode] = useState(false);
-  const [activeCaseId, setActiveCaseId] = useState('2026-06-18');
+  const [isCaseMode, setIsCaseMode] = useState(() => activeNav === '效果评估');
+  const [activeCaseId, setActiveCaseId] = useState(() => activeNav === '效果评估' ? '2026-07-02' : '2026-06-18');
   const [playbackMinutes, setPlaybackMinutes] = useState(90);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -40,23 +40,15 @@ export default function App() {
   const [normalMinutes, setNormalMinutes] = useState(1080); // defaults to 18:00 (18 * 60 = 1080)
   const [normalIsPlaying, setNormalIsPlaying] = useState(false);
 
-  // Reset case mode when switching activeNav: force case mode for 效果评估, reset to real-time for 监测预警
+  // Reset case mode when switching activeNav: force case mode for 效果评估 (defaults to 2026-07-02 Jiangsu Nanjing case), reset to real-time for 监测预警
   useEffect(() => {
     if (activeNav === '监测预警') {
       setIsCaseMode(false);
     } else if (activeNav === '效果评估') {
       setIsCaseMode(true);
-      if (activeCaseId === '2026-07-02') {
-        setActiveRegion('江苏地块');
-        if (!selectedHistoryId.startsWith('n')) {
-          setSelectedHistoryId('n1');
-        }
-      } else {
-        setActiveRegion('湖北地块');
-        if (!selectedHistoryId.startsWith('c')) {
-          setSelectedHistoryId('c1');
-        }
-      }
+      setActiveCaseId('2026-07-02');
+      setActiveRegion('江苏地块');
+      setSelectedHistoryId('n1');
     }
   }, [activeNav]);
 
