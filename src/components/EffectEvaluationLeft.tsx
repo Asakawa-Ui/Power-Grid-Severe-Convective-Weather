@@ -75,11 +75,23 @@ const EffectChartTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function EffectEvaluationLeft({ activeRegion, isCaseMode = false, activeCaseId = '2026-07-02' }: LeftProps) {
+export default function EffectEvaluationLeft({ 
+  activeRegion, 
+  isCaseMode = false, 
+  activeCaseId = '2026-07-02',
+  selectedHistoryId,
+  setSelectedHistoryId
+}: LeftProps & { selectedHistoryId?: string; setSelectedHistoryId?: (id: string) => void }) {
   return (
     <>
       <EffectEvaluationLeftScopeAndStats activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
-      <EffectEvaluationLeftTable activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
+      <EffectEvaluationLeftTable 
+        activeRegion={activeRegion} 
+        isCaseMode={isCaseMode} 
+        activeCaseId={activeCaseId} 
+        selectedHistoryId={selectedHistoryId}
+        setSelectedHistoryId={setSelectedHistoryId}
+      />
     </>
   );
 }
@@ -446,7 +458,13 @@ export function EffectEvaluationLeftScopeAndStats({ activeRegion, isCaseMode = f
   );
 }
 
-export function EffectEvaluationLeftTable({ activeRegion, isCaseMode = false, activeCaseId = '2026-07-02' }: LeftProps) {
+export function EffectEvaluationLeftTable({ 
+  activeRegion, 
+  isCaseMode = false, 
+  activeCaseId = '2026-07-02',
+  selectedHistoryId,
+  setSelectedHistoryId
+}: LeftProps & { selectedHistoryId?: string; setSelectedHistoryId?: (id: string) => void }) {
   let tableData = [
     { name: '大冶金湖', type: '火箭弹', rational: '合理', status: '有效', radarChange: '-52%' },
     { name: '刘仁八', type: '火箭弹', rational: '合理', status: '有效', radarChange: '-48%' },
@@ -485,6 +503,32 @@ export function EffectEvaluationLeftTable({ activeRegion, isCaseMode = false, ac
     }
   }
 
+  const getRowId = (name: string) => {
+    if (isCaseMode) {
+      if (activeCaseId === '2026-07-02') {
+        if (name.includes('大杨树')) return 'n3';
+        if (name.includes('太平庄')) return 'n2';
+        if (name.includes('三道沟')) return 'n1';
+      } else {
+        if (name.includes('金湖')) return 'c1';
+        if (name.includes('刘仁八')) return 'c2';
+        if (name.includes('白沙')) return 'c3';
+      }
+    } else {
+      if (name.includes('姜祥村')) return 'h1';
+      if (name.includes('铁山南')) return 'h2';
+      if (name.includes('白沙')) return 'h3';
+      if (name.includes('金湖')) return 'h4';
+      if (name.includes('刘仁八')) return 'h5';
+      if (name.includes('金牛镇')) return 'h6';
+      if (name.includes('陈贵镇')) return 'h7';
+      if (name.includes('大杨树')) return 'n3';
+      if (name.includes('太平庄')) return 'n2';
+      if (name.includes('三道沟')) return 'n1';
+    }
+    return '';
+  };
+
   return (
     <div className="w-full h-full bg-gradient-to-b from-slate-50/80 to-white border-l-4 border-l-indigo-500 border-y border-r border-slate-200/60 rounded-r-xl rounded-l-none p-2.5 flex flex-col gap-2 shadow-sm min-h-0 overflow-hidden">
       <div className="flex items-center justify-between shrink-0">
@@ -506,37 +550,53 @@ export function EffectEvaluationLeftTable({ activeRegion, isCaseMode = false, ac
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-            {tableData.map((row, i) => (
-              <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                <td className="px-2.5 py-2 font-bold">{row.name}</td>
-                <td className="px-1.5 py-2">
-                  <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
-                    row.type.includes('火箭')
-                      ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                      : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                  }`}>
-                    {row.type}
-                  </span>
-                </td>
-                <td className="px-1.5 py-2">
-                  <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
-                    row.rational === '合理' 
-                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                      : 'bg-orange-50 text-orange-600 border border-orange-100'
-                  }`}>
-                    {row.rational}
-                  </span>
-                </td>
-                <td className="px-1.5 py-2">
-                  <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-50 text-emerald-600 border border-emerald-100">
-                    {row.status}
-                  </span>
-                </td>
-                <td className="px-2.5 py-2 text-right font-mono font-bold text-emerald-600">
-                  {row.radarChange}
-                </td>
-              </tr>
-            ))}
+            {tableData.map((row, i) => {
+              const rowId = getRowId(row.name);
+              const isSelected = selectedHistoryId === rowId;
+              return (
+                <tr 
+                  key={i} 
+                  onClick={() => {
+                    if (rowId && setSelectedHistoryId) {
+                      setSelectedHistoryId(rowId);
+                    }
+                  }}
+                  className={`transition-colors cursor-pointer select-none ${
+                    isSelected 
+                      ? 'bg-blue-50/80 font-semibold ring-1 ring-inset ring-blue-300' 
+                      : 'hover:bg-slate-50/60'
+                  }`}
+                >
+                  <td className="px-2.5 py-2 font-bold">{row.name}</td>
+                  <td className="px-1.5 py-2">
+                    <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
+                      row.type.includes('火箭')
+                        ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                        : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                    }`}>
+                      {row.type}
+                    </span>
+                  </td>
+                  <td className="px-1.5 py-2">
+                    <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
+                      row.rational === '合理' 
+                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                        : 'bg-orange-50 text-orange-600 border border-orange-100'
+                    }`}>
+                      {row.rational}
+                    </span>
+                  </td>
+                  <td className="px-1.5 py-2">
+                    <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-50 text-emerald-600 border border-emerald-100">
+                      {row.status}
+                    </span>
+                  </td>
+                  <td className="px-2.5 py-2 text-right font-mono font-bold text-emerald-600">
+                    {row.radarChange}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

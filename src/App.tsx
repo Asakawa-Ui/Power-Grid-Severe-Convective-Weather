@@ -24,14 +24,14 @@ import EquipmentManagementLeft from './components/EquipmentManagementLeft';
 import EquipmentManagementRight from './components/EquipmentManagementRight';
 
 export default function App() {
-  const [activeNav, setActiveNav] = useState('作业指挥'); // default to the newly requested view for easy viewing
-  const [activeRegion, setActiveRegion] = useState(() => activeNav === '效果评估' ? '江苏地块' : '湖北地块');
+  const [activeNav, setActiveNav] = useState('效果评估');
+  const [activeRegion, setActiveRegion] = useState('江苏地块');
   const [selectedPoint, setSelectedPoint] = useState<WeatherPoint | null>(null);
-  const [selectedHistoryId, setSelectedHistoryId] = useState<string>(() => activeNav === '效果评估' ? 'n1' : 'h1');
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string>('n1');
   
   // Case Study Mode playback states
-  const [isCaseMode, setIsCaseMode] = useState(() => activeNav === '效果评估');
-  const [activeCaseId, setActiveCaseId] = useState(() => activeNav === '效果评估' ? '2026-07-02' : '2026-06-18');
+  const [isCaseMode, setIsCaseMode] = useState(true);
+  const [activeCaseId, setActiveCaseId] = useState('2026-07-02');
   const [playbackMinutes, setPlaybackMinutes] = useState(90);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -202,7 +202,13 @@ export default function App() {
                 <EffectEvaluationLeftScopeAndStats activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
               </div>
               <div className="flex-1 min-h-0">
-                <EffectEvaluationLeftTable activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
+                <EffectEvaluationLeftTable 
+                  activeRegion={activeRegion} 
+                  isCaseMode={isCaseMode} 
+                  activeCaseId={activeCaseId} 
+                  selectedHistoryId={selectedHistoryId}
+                  setSelectedHistoryId={setSelectedHistoryId}
+                />
               </div>
             </div>
 
@@ -240,6 +246,12 @@ export default function App() {
                       setNormalIsPlaying={setNormalIsPlaying}
                       variant="inline"
                       selectedHistoryId={selectedHistoryId}
+                    />
+                    <MapLayersPanel 
+                      activeNav={activeNav}
+                      isCaseMode={isCaseMode}
+                      playbackMinutes={playbackMinutes}
+                      normalMinutes={normalMinutes}
                     />
                   </div>
                 </div>
@@ -282,7 +294,13 @@ export default function App() {
           <div className="absolute top-16 left-0 right-0 bottom-0 bg-[#f1f5f9] flex p-3 gap-3 overflow-hidden select-none z-30 animate-fade-in">
             {/* Column 1: Left Panel */}
             <div className="w-[360px] shrink-0 flex flex-col gap-3 h-full">
-              <EffectEvaluationLeft activeRegion={activeRegion} isCaseMode={isCaseMode} activeCaseId={activeCaseId} />
+              <EffectEvaluationLeft 
+                activeRegion={activeRegion} 
+                isCaseMode={isCaseMode} 
+                activeCaseId={activeCaseId} 
+                selectedHistoryId={selectedHistoryId}
+                setSelectedHistoryId={setSelectedHistoryId}
+              />
             </div>
 
             {/* Column 2: Center Map + Bottom Matrix */}
@@ -317,6 +335,12 @@ export default function App() {
                     setNormalIsPlaying={setNormalIsPlaying}
                     variant="inline"
                     selectedHistoryId={selectedHistoryId}
+                  />
+                  <MapLayersPanel 
+                    activeNav={activeNav}
+                    isCaseMode={isCaseMode}
+                    playbackMinutes={playbackMinutes}
+                    normalMinutes={normalMinutes}
                   />
                 </div>
               </div>

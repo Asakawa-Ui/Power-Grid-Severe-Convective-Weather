@@ -38,16 +38,16 @@ export function getHistorySiteDetails(id: string, isCaseMode?: boolean, activeCa
   }
   const site = data.find(h => h.id === id) || data[0];
   let coord: [number, number] = [114.87528, 30.07444]; // default 大冶金湖
-  if (site.location === '姜祥村作业点') coord = [115.07944, 30.02250];
-  else if (site.location === '铁山南作业点') coord = [114.89139, 30.19389];
-  else if (site.location === '白沙作业点') coord = [115.04722, 29.96778];
-  else if (site.location === '大冶金湖作业点') coord = [114.87528, 30.07444];
-  else if (site.location === '刘仁八作业点') coord = [114.84639, 29.94417];
-  else if (site.location === '金牛镇作业点') coord = [114.78, 30.01];
-  else if (site.location === '陈贵镇作业点') coord = [114.82, 30.12];
-  else if (site.location === '太平庄高炮站') coord = [121.67, 30.7543];
-  else if (site.location === '大杨树作业点') coord = [121.4669, 34.3844];
-  else if (site.location === '三道沟火箭点') coord = [118.6884, 32.1628];
+  if (site.location.includes('姜祥村')) coord = [115.07944, 30.02250];
+  else if (site.location.includes('铁山南')) coord = [114.89139, 30.19389];
+  else if (site.location.includes('白沙')) coord = [115.04722, 29.96778];
+  else if (site.location.includes('金湖')) coord = [114.87528, 30.07444];
+  else if (site.location.includes('刘仁八')) coord = [114.84639, 29.94417];
+  else if (site.location.includes('金牛镇')) coord = [114.78, 30.01];
+  else if (site.location.includes('陈贵镇')) coord = [114.82, 30.12];
+  else if (site.location.includes('太平庄')) coord = [118.7210, 31.9680];
+  else if (site.location.includes('大杨树')) coord = [118.7050, 31.8650];
+  else if (site.location.includes('三道沟')) coord = [118.6884, 32.1628];
   
   return {
     ...site,
@@ -868,7 +868,7 @@ export function EffectEvaluationHistoryList({ selectedHistoryId, setSelectedHist
           const isSelected = selectedHistoryId === card.id;
           
           // Get coordinates for geographic location
-          const details = getHistorySiteDetails(card.id, isCaseMode);
+          const details = getHistorySiteDetails(card.id, isCaseMode, activeCaseId);
           const coord = details.coord;
           
           // Format combined date time range: YYYY-MM-DD HH:MM-HH:MM

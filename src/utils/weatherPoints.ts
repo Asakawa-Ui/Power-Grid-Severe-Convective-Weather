@@ -742,22 +742,22 @@ export const weatherPoints: WeatherPoint[] = [
     "id": "wp-62",
     "name": "太平庄高炮站",
     "coord": [
-      121.67,
-      30.7543
+      118.7210,
+      31.9680
     ],
-    "type": "rocket",
-    "status": "none",
+    "type": "gun",
+    "status": "ready",
     "region": "江苏地块"
   },
   {
     "id": "wp-63",
     "name": "大杨树作业点",
     "coord": [
-      121.4669,
-      34.3844
+      118.7050,
+      31.8650
     ],
-    "type": "rocket",
-    "status": "none",
+    "type": "gun",
+    "status": "ready",
     "region": "江苏地块"
   },
   {
