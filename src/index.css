@@ -103,6 +103,21 @@
 }
 
 /* In 效果评估 mode, hide default MapLibre navigation control in top right */
+/* Lock non-map UI operations when Draw Area tool is active */
+[data-draw-lock="true"] * {
+  pointer-events: none !important;
+}
+[data-draw-lock="true"] [data-map-interactive="true"],
+[data-draw-lock="true"] [data-map-interactive="true"] * {
+  pointer-events: auto !important;
+}
+[data-draw-lock="true"] [data-map-interactive="true"] .maplibregl-marker,
+[data-draw-lock="true"] [data-map-interactive="true"] .maplibregl-marker *,
+[data-draw-lock="true"] [data-map-interactive="true"] .maplibregl-popup,
+[data-draw-lock="true"] [data-map-interactive="true"] .maplibregl-popup * {
+  pointer-events: none !important;
+}
+
 .map-effect-eval-mode .maplibregl-ctrl-top-right {
   display: none !important;
 }

@@ -12,6 +12,7 @@ import RegionSelector from './components/RegionSelector';
 import Map3D from './components/Map3D';
 import MapErrorBoundary from './components/MapErrorBoundary';
 import MapLayersPanel from './components/MapLayersPanel';
+import MapLegend from './components/MapLegend';
 import OperationCommandLeft from './components/OperationCommandLeft';
 import OperationCommandRight from './components/OperationCommandRight';
 import ScrollingMessages from './components/ScrollingMessages';
@@ -39,6 +40,20 @@ export default function App() {
   // Normal / Real-time Mode states
   const [normalMinutes, setNormalMinutes] = useState(1080); // defaults to 18:00 (18 * 60 = 1080)
   const [normalIsPlaying, setNormalIsPlaying] = useState(false);
+  const [isDrawModeActive, setIsDrawModeActive] = useState(false);
+
+  useEffect(() => {
+    const handleToolChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tool: 'draw' | 'inspect' | 'measure' | null }>;
+      setIsDrawModeActive(customEvent.detail?.tool === 'draw');
+    };
+    window.addEventListener('map-tool-activated', handleToolChange);
+    window.addEventListener('map-tool-changed', handleToolChange);
+    return () => {
+      window.removeEventListener('map-tool-activated', handleToolChange);
+      window.removeEventListener('map-tool-changed', handleToolChange);
+    };
+  }, []);
 
   // Reset case mode when switching activeNav: force case mode for 效果评估 (defaults to 2026-07-02 Jiangsu Nanjing case), reset to real-time for 监测预警
   useEffect(() => {
@@ -147,7 +162,7 @@ export default function App() {
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-100 font-sans text-slate-800">
+    <div data-draw-lock={isDrawModeActive ? 'true' : undefined} className="relative w-screen h-screen overflow-hidden bg-slate-100 font-sans text-slate-800">
       {activeNav !== '效果评估' && (
         <MapErrorBoundary className="absolute inset-0 z-0">
           <Map3D activeRegion={activeRegion} onPointClick={setSelectedPoint} isCaseMode={isCaseMode} playbackMinutes={playbackMinutes} normalMinutes={normalMinutes} activeNav={activeNav} />
@@ -225,12 +240,20 @@ export default function App() {
                         onPointClick={setSelectedPoint} 
                         isCaseMode={isCaseMode} 
                         playbackMinutes={playbackMinutes} 
-                        normalMinutes={normalMinutes}
+                        normalMinutes={normalMinutes} 
                         activeNav={activeNav} 
                         selectedHistoryId={selectedHistoryId}
                         activeCaseId={activeCaseId}
                       />
                     </MapErrorBoundary>
+                  <MapLegend 
+                    activeNav={activeNav}
+                    activeRegion={activeRegion}
+                    isCaseMode={isCaseMode}
+                    playbackMinutes={playbackMinutes}
+                    normalMinutes={normalMinutes}
+                    position="top-left"
+                  />
                     <BottomPanel 
                       activeNav={activeNav}
                       isCaseMode={isCaseMode}
@@ -320,6 +343,14 @@ export default function App() {
                       activeCaseId={activeCaseId}
                     />
                   </MapErrorBoundary>
+                  <MapLegend 
+                    activeNav={activeNav}
+                    activeRegion={activeRegion}
+                    isCaseMode={isCaseMode}
+                    playbackMinutes={playbackMinutes}
+                    normalMinutes={normalMinutes}
+                    position="top-left"
+                  />
                   <BottomPanel 
                     activeNav={activeNav}
                     isCaseMode={isCaseMode}
@@ -410,7 +441,15 @@ export default function App() {
           normalMinutes={normalMinutes}
         />
       )}
-
+      {activeNav !== '效果评估' && (
+        <MapLegend 
+          activeNav={activeNav}
+          activeRegion={activeRegion}
+          isCaseMode={isCaseMode}
+          playbackMinutes={playbackMinutes}
+          normalMinutes={normalMinutes}
+        />
+      )}
 
     </div>
   );

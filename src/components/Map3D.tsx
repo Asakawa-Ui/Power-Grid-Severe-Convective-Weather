@@ -12,6 +12,7 @@ import geo320000 from '../../public/geo/320000.json';
 import geo340000 from '../../public/geo/340000.json';
 import geo510000 from '../../public/geo/510000.json';
 
+const cachedProvinceData: Record<string, { provinceFeature: any; maskFeature: any; bbox: [number, number, number, number]; validPointIds: Set<string> }> = {};
 const localGeoMap: Record<string, any> = {
   '420000': geo420000,
   '320000': geo320000,
@@ -197,6 +198,40 @@ export default function Map3D({
   const activeMapToolRef = useRef<'draw' | 'inspect' | 'measure' | null>(null);
   activeMapToolRef.current = activeMapTool;
 
+  // Weather layer opacity state
+  const weatherOpacityRef = useRef<number>(0.8);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('map-weather-opacity');
+      if (saved !== null) {
+        const val = Number(saved);
+        if (!isNaN(val) && val >= 0 && val <= 100) {
+          weatherOpacityRef.current = val / 100;
+        }
+      }
+    } catch (e) {}
+
+    const handleOpacity = (e: Event) => {
+      const customEvent = e as CustomEvent<{ opacity: number }>;
+      const op = customEvent.detail?.opacity ?? 0.8;
+      weatherOpacityRef.current = op;
+      const mapInstance = map.current;
+      if (!mapInstance) return;
+
+      if (mapInstance.getLayer('warning-areas-fill')) {
+        mapInstance.setPaintProperty('warning-areas-fill', 'fill-opacity', op * 0.45);
+      }
+      if (mapInstance.getLayer('warning-areas-line')) {
+        mapInstance.setPaintProperty('warning-areas-line', 'line-opacity', op * 0.85);
+      }
+    };
+    window.addEventListener('weather-opacity-changed', handleOpacity);
+    return () => {
+      window.removeEventListener('weather-opacity-changed', handleOpacity);
+    };
+  }, []);
+
   // Active overlaid weather products synced from LeftPanel / MapLayersPanel
   const [selectedProductKeys, setSelectedProductKeys] = useState<string[]>([]);
   useEffect(() => {
@@ -207,6 +242,19 @@ export default function Map3D({
     window.addEventListener('product-select-changed', handleProductChange);
     return () => {
       window.removeEventListener('product-select-changed', handleProductChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const mapInstance = map.current;
+    if (!mapInstance || !(mapInstance.style as any)?._loaded) return;
+    { const isVisible = selectedProductKeys.length > 0;
+    if (mapInstance.getLayer('warning-areas-fill')) {
+      mapInstance.setLayoutProperty('warning-areas-fill', 'visibility', isVisible ? 'visible' : 'none');
+    }
+    if (mapInstance.getLayer('warning-areas-line')) {
+      mapInstance.setLayoutProperty('warning-areas-line', 'visibility', isVisible ? 'visible' : 'none');
+    }
     };
   }, []);
 
@@ -231,8 +279,8 @@ export default function Map3D({
   const savedMarkersRef = useRef<maplibregl.Marker[]>([]);
 
   // Draw Area state (in-progress drawing matching image_55adfb97.png)
-  const [drawShapeType, setDrawShapeType] = useState<'polygon' | 'rect' | 'circle'>('polygon');
-  const drawShapeTypeRef = useRef<'polygon' | 'rect' | 'circle'>('polygon');
+  const [drawShapeType, setDrawShapeType] = useState<'polygon' | 'rect' | 'circle' | null>(null);
+  const drawShapeTypeRef = useRef<'polygon' | 'rect' | 'circle' | null>(null);
   drawShapeTypeRef.current = drawShapeType;
 
   const [drawColor, setDrawColor] = useState('#2563eb');
@@ -258,10 +306,28 @@ export default function Map3D({
   const isDrawClosedRef = useRef(false);
   isDrawClosedRef.current = isDrawClosed;
 
+  const updateDrawPoints = (pts: [number, number][]) => {
+    drawPointsRef.current = pts;
+    setDrawPoints(pts);
+  };
+
+  const updateDraftRingCoords = (ring: [number, number][]) => {
+    draftRingCoordsRef.current = ring;
+    setDraftRingCoords(ring);
+  };
+
+  const updateIsDrawClosed = (closed: boolean) => {
+    isDrawClosedRef.current = closed;
+    setIsDrawClosed(closed);
+  };
+  const dragStartPixelRef = useRef<[number, number] | null>(null);
+  const handleSaveCurrentRegionRef = useRef<(customRing?: [number, number][]) => void>(() => {});
+
   const [drawAreaStr, setDrawAreaStr] = useState('');
   const draftActionMarkerRef = useRef<maplibregl.Marker | null>(null);
   const activeTipMarkerRef = useRef<maplibregl.Marker | null>(null);
   const selectedSavedRegionIdRef = useRef<string | null>(null);
+  const [selectedSavedRegionId, setSelectedSavedRegionId] = useState<string | null>(null);
 
   const clearActiveTipMarker = () => {
     if (activeTipMarkerRef.current) {
@@ -272,12 +338,13 @@ export default function Map3D({
       draftActionMarkerRef.current.remove();
       draftActionMarkerRef.current = null;
     }
-    selectedSavedRegionIdRef.current = null;
+    // Keep selectedSavedRegionId managed by handleClearCurrentDraw / handleSaveCurrentRegion
   };
 
   // Dragging & moving refs for drawn shapes
   const isDraggingDrawRef = useRef(false);
   const isMovingShapeRef = useRef(false);
+  const draggingVertexIdxRef = useRef<number | null>(null);
   const dragStartCoordRef = useRef<[number, number] | null>(null);
   const dragCurrentRingRef = useRef<[number, number][] | null>(null);
   const dragCurrentPointsRef = useRef<[number, number][] | null>(null);
@@ -289,6 +356,7 @@ export default function Map3D({
   const [measurePoints, setMeasurePoints] = useState<[number, number][]>([]);
   const measurePointsRef = useRef<[number, number][]>([]);
   measurePointsRef.current = measurePoints;
+  const isMeasureCompletedRef = useRef(false);
   const [measureTotalDistStr, setMeasureTotalDistStr] = useState('');
 
   // Inspect state: ONLY coordinates and superimposed meteorological data value
@@ -401,8 +469,10 @@ export default function Map3D({
       map.current = new maplibregl.Map({
         container: mapContainer.current,
         attributionControl: false,
+        fadeDuration: 0,
+        pixelRatio: Math.min(typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1, 1.5),
         transformRequest: (url: string) => {
-          if (url.includes('tianditu.gov.cn')) {
+          if (url.includes('tianditu.gov.cn') && false) {
             const selectedKey = getRandomKey();
             const newUrl = url.replace(/tk=[a-zA-Z0-9]+/, `tk=${selectedKey}`);
             return { url: newUrl };
@@ -501,6 +571,12 @@ export default function Map3D({
       'top-right'
     );
 
+    map.current.once('styledata', () => {
+      if (map.current && (map.current.style as any)?._loaded) {
+        ensureSavedRegionsLayers(map.current);
+        syncSavedRegionsGeoJson(savedRegionsRef.current);
+      }
+    });
     map.current.once('load', () => {
       if (map.current) {
         ensureSavedRegionsLayers(map.current);
@@ -585,7 +661,31 @@ export default function Map3D({
         
         if (!mapInstance || !mapInstance.style || !mapInstance.getStyle) return;
         
-        if (activeNav !== '效果评估') {
+        if (!cachedProvinceData[code]) {
+          const bboxVal = turf.bbox(provinceFeature) as [number, number, number, number];
+          const maskVal = (turf as any).mask(provinceFeature as any);
+          const validIds = new Set<string>();
+          weatherPoints.forEach(wp => {
+            if (wp.region !== activeRegion || wp.type === 'vehicle') return;
+            if (activeRegion === '湖北地块' && !wp.id.startsWith('wp-hb-new')) return;
+            try {
+              if ((turf as any).booleanPointInPolygon((turf as any).point(wp.coord as [number, number]), provinceFeature)) {
+                validIds.add(wp.id);
+              }
+            } catch {}
+          });
+          cachedProvinceData[code] = { provinceFeature, maskFeature: maskVal, bbox: bboxVal, validPointIds: validIds };
+        }
+        const { bbox: cachedBbox, validPointIds } = cachedProvinceData[code];
+        if (activeNav !== '效果评估' && currentRegionRef.current !== activeRegion) {
+          currentRegionRef.current = activeRegion;
+          mapInstance.fitBounds(cachedBbox, {
+            padding: { top: 100, bottom: 100, left: 200, right: 350 },
+            pitch: 0,
+            bearing: 0,
+            duration: 0
+          });
+        } else if (activeNav !== '效果评估' && false) {
           const bbox = turf.bbox(provinceFeature);
           mapInstance.fitBounds(bbox as [number, number, number, number], {
             padding: { top: 100, bottom: 100, left: 200, right: 350 }, // leaving space for UI
@@ -595,7 +695,7 @@ export default function Map3D({
         }
 
         // We use turf.mask to invert the polygon to cover the whole world EXCEPT the province
-        const maskFeature = (turf as any).mask(provinceFeature as any);
+        const maskFeature = cachedProvinceData[code]?.maskFeature || (turf as any).mask(provinceFeature as any);
 
         // Update markers based on active region
         markersRef.current.forEach(m => m.remove());
@@ -716,11 +816,11 @@ export default function Map3D({
 
             el.innerHTML = `
               <div class="w-full h-full relative flex items-center justify-center group-hover:scale-125 transition-transform duration-300">
-                <svg width="18" height="18" viewBox="0 0 18 18" class="overflow-visible" style="filter: drop-shadow(0px 1.5px 3px rgba(0,0,0,0.35))">
+                <svg width="18" height="18" viewBox="0 0 18 18" class="overflow-visible">
                   <circle cx="9" cy="9" r="6.5" fill="${color}" stroke="white" stroke-width="1.8" />
                   <circle cx="9" cy="9" r="2" fill="white" />
                 </svg>
-                <div class="site-label absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
+                <div class="site-label absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/85 text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
                   ${wp.name}
                 </div>
               </div>
@@ -772,7 +872,7 @@ export default function Map3D({
             if (wp.type === 'vehicle') return false; // Exclude vehicle sites
             if (activeRegion === '湖北地块' && !wp.id.startsWith('wp-hb-new')) return false;
             try {
-              return (turf as any).booleanPointInPolygon((turf as any).point(wp.coord as [number, number]), provinceFeature);
+              return validPointIds ? validPointIds.has(wp.id) : (turf as any).booleanPointInPolygon((turf as any).point(wp.coord as [number, number]), provinceFeature);
             } catch (e) {
               return false;
             }
@@ -838,7 +938,12 @@ export default function Map3D({
               const marker = new maplibregl.Marker({ element: el })
                 .setLngLat(wp.coord as [number, number]);
 
+              let lastRenderKey = '';
               const updateMarkerFn = (status: string) => {
+                // 状态未变化时跳过 innerHTML 与 Popup 重建（时间轴每秒推进时避免全部标记重绘）
+                const renderKey = `${status}|${selectedHistoryId}|${activeNav}`;
+                if (renderKey === lastRenderKey) return;
+                lastRenderKey = renderKey;
                 let colorClass = 'text-[#94a3b8]'; // none
                 let fillColor = '#94a3b8';
                 if (status === 'ready') { colorClass = 'text-[#84b676]'; fillColor = '#84b676'; }
@@ -880,7 +985,7 @@ export default function Map3D({
                   el.innerHTML = `
                     <div class="w-8 h-8 relative flex items-center justify-center group-hover:scale-115 transition-transform duration-200">
                       <img src="${iconSrc}" class="w-8 h-8 select-none drop-shadow-sm opacity-90 hover:opacity-100" alt="${wp.name}" />
-                      <div class="site-label absolute -top-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
+                      <div class="site-label absolute -top-4 left-1/2 -translate-x-1/2 bg-slate-900/85 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
                         ${wp.name}
                       </div>
                     </div>
@@ -888,12 +993,12 @@ export default function Map3D({
                 } else {
                   if (currentType === 'rocket') {
                     // 火箭弹：圆形
-                    shapeSvg = `<svg width="14" height="14" viewBox="0 0 14 14" class="overflow-visible ${colorClass}" style="filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.3))">
+                    shapeSvg = `<svg width="14" height="14" viewBox="0 0 14 14" class="overflow-visible ${colorClass}">
                       <circle cx="7" cy="7" r="6" fill="${fillColor}" stroke="white" stroke-width="1.5" />
                     </svg>`;
                   } else {
                     // 高炮：方形
-                    shapeSvg = `<svg width="14" height="14" viewBox="0 0 14 14" class="overflow-visible ${colorClass}" style="filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.3))">
+                    shapeSvg = `<svg width="14" height="14" viewBox="0 0 14 14" class="overflow-visible ${colorClass}">
                       <rect x="1" y="1" width="12" height="12" rx="1.5" fill="${fillColor}" stroke="white" stroke-width="1.5" />
                     </svg>`;
                   }
@@ -904,7 +1009,7 @@ export default function Map3D({
                     <div class="w-full h-full relative flex items-center justify-center group-hover:scale-125 transition-transform duration-300">
                       ${shapeSvg}
                       ${pingSpan}
-                      <div class="site-label absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-sm text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
+                      <div class="site-label absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/85 text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/10 shadow whitespace-nowrap pointer-events-none select-none">
                         ${wp.name}
                       </div>
                     </div>
@@ -971,7 +1076,7 @@ export default function Map3D({
           });
         }
 
-        const bufferedLinesFeatures = (powerLines.features as any[])
+        const bufferedLinesFeatures = ([] as any[])
           .filter(f => f.geometry.type === 'LineString')
           .map(f => {
             const buffered = (turf as any).buffer(f, 20, { units: 'kilometers' });
@@ -1123,6 +1228,30 @@ export default function Map3D({
         }
 
         const beforeId = mapInstance.getLayer('power-lines-buffer-layer') ? 'power-lines-buffer-layer' : undefined;
+        const initOp = typeof weatherOpacityRef.current === 'number' ? weatherOpacityRef.current : 0.8;
+        if (!mapInstance.getLayer('warning-areas-fill')) {
+          mapInstance.addLayer({
+            id: 'warning-areas-fill',
+            type: 'fill',
+            source: 'warning-areas',
+            paint: {
+              'fill-color': ['get', 'fillColor'],
+              'fill-opacity': initOp * 0.45
+            }
+          }, beforeId);
+        }
+        if (!mapInstance.getLayer('warning-areas-line')) {
+          mapInstance.addLayer({
+            id: 'warning-areas-line',
+            type: 'line',
+            source: 'warning-areas',
+            paint: {
+              'line-color': ['get', 'borderColor'],
+              'line-width': 2,
+              'line-opacity': initOp * 0.85
+            }
+          }, beforeId);
+        }
 
         // Apply initial visibilities from mapLayersVisibilityGranular
         const currentVis = (window as any).mapLayersVisibilityGranular || {
@@ -1140,7 +1269,7 @@ export default function Map3D({
       }
     };
 
-    if (mapInstance.isStyleLoaded()) {
+    if ((mapInstance.style as any)?._loaded) {
       updateMask();
     } else {
       mapInstance.once('load', updateMask);
@@ -1228,7 +1357,7 @@ export default function Map3D({
           zoom: evalZoom,
           pitch: 0,
           bearing: 0,
-          duration: 1500
+          duration: 300
         });
 
         // 1. Direct straight trajectory line in 2D
@@ -1300,7 +1429,7 @@ export default function Map3D({
         const markerEl = document.createElement('div');
         markerEl.className = 'eval-site-marker relative flex flex-col items-center select-none cursor-pointer group z-20';
         markerEl.innerHTML = `
-          <div class="eval-site-label inline-block bg-slate-900/85 backdrop-blur-sm text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/20 shadow whitespace-nowrap mb-0.5 pointer-events-none select-none">
+          <div class="eval-site-label inline-block bg-slate-900/90 text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded border border-white/20 shadow whitespace-nowrap mb-0.5 pointer-events-none select-none">
             ${siteDetails.location}
           </div>
           <div class="relative w-9 h-9 flex items-center justify-center group-hover:scale-115 transition-transform duration-200">
@@ -1421,7 +1550,7 @@ export default function Map3D({
       }
     };
 
-    if (mapInstance.isStyleLoaded()) {
+    if ((mapInstance.style as any)?._loaded) {
       setupEvaluation();
     } else {
       mapInstance.once('load', setupEvaluation);
@@ -1450,7 +1579,7 @@ export default function Map3D({
       });
     };
 
-    if (mapInstance.isStyleLoaded()) {
+    if ((mapInstance.style as any)?._loaded) {
       applyVisibility();
     } else {
       mapInstance.once('load', applyVisibility);
@@ -1467,7 +1596,7 @@ export default function Map3D({
         zoom: 11,
         pitch: 0,
         bearing: 0,
-        duration: 3000
+        duration: 300
       });
     };
 
@@ -1479,7 +1608,7 @@ export default function Map3D({
           padding: { top: 100, bottom: 100, left: 200, right: 350 },
           pitch: 0,
           bearing: 0,
-          duration: 2000
+          duration: 300
         });
       }
     };
@@ -1495,7 +1624,7 @@ export default function Map3D({
             zoom: 12.5,
             pitch: 0,
             bearing: 0,
-            duration: 2000
+            duration: 300
           });
         }
       }
@@ -1649,8 +1778,9 @@ export default function Map3D({
 
   // --- Saved Regions Layer (持久化保存区域并在地图上持续呈现) ---
   const ensureSavedRegionsLayers = (mapInstance: maplibregl.Map) => {
-    if (!mapInstance || !mapInstance.isStyleLoaded()) return;
+    if (!mapInstance || !(mapInstance.style as any)?._loaded) return;
     try {
+      if (mapInstance.getSource('map-saved-regions-source') && mapInstance.getLayer('map-saved-regions-stroke-dashed')) return;
       if (!mapInstance.getSource('map-saved-regions-source')) {
         mapInstance.addSource('map-saved-regions-source', {
           type: 'geojson',
@@ -1718,10 +1848,12 @@ export default function Map3D({
   const handleDeleteSavedRegion = (id: string) => {
     clearActiveTipMarker();
     const next = savedRegionsRef.current.filter(r => r.id !== id);
+    savedRegionsRef.current = next;
     setSavedRegions(next);
     try {
       localStorage.setItem('map-saved-drawn-regions', JSON.stringify(next));
     } catch (e) {}
+    handleClearCurrentDraw();
     syncSavedRegionsGeoJson(next, false);
     window.dispatchEvent(new CustomEvent('saved-regions-updated', { detail: { regions: next } }));
   };
@@ -1751,8 +1883,8 @@ export default function Map3D({
     const mapInstance = map.current;
     if (!mapInstance) return;
 
-    if (!mapInstance.isStyleLoaded()) {
-      mapInstance.once('style.load', () => {
+    if (!(mapInstance.style as any)?._loaded) {
+      mapInstance.once('styledata', () => {
         syncSavedRegionsGeoJson(regions, _isEditing);
       });
       return;
@@ -1765,6 +1897,7 @@ export default function Map3D({
 
       const features: any[] = [];
       regions.forEach((r) => {
+        if (selectedSavedRegionIdRef.current && r.id === selectedSavedRegionIdRef.current) return;
         if (r.coordinates && r.coordinates.length >= 3) {
           const first = r.coordinates[0];
           const last = r.coordinates[r.coordinates.length - 1];
@@ -1835,10 +1968,10 @@ export default function Map3D({
     if (!map.current) return;
     const mapInstance = map.current;
     const isEditing = activeMapToolRef.current === 'draw';
-    if (mapInstance.isStyleLoaded()) {
+    if ((mapInstance.style as any)?._loaded) {
       syncSavedRegionsGeoJson(savedRegions, isEditing);
     } else {
-      mapInstance.once('style.load', () => {
+      mapInstance.once('styledata', () => {
         syncSavedRegionsGeoJson(savedRegions, isEditing);
       });
     }
@@ -1846,8 +1979,9 @@ export default function Map3D({
 
   // --- Map Tools Implementation (绘制区域 / 测距 / 鼠标取值) ---
   const ensureToolLayers = (mapInstance: maplibregl.Map) => {
-    if (!mapInstance || !mapInstance.isStyleLoaded()) return;
+    if (!mapInstance || !(mapInstance.style as any)?._loaded) return;
     try {
+      if (mapInstance.getSource('map-tool-draw-source') && mapInstance.getSource('map-tool-measure-source')) return;
       if (!mapInstance.getSource('map-tool-draw-source')) {
         mapInstance.addSource('map-tool-draw-source', {
           type: 'geojson',
@@ -2028,7 +2162,10 @@ export default function Map3D({
       features
     });
 
-    // 确保轮廓线与控制点图层在填充面之上
+    // 确保轮廓线与控制点图层在填充面之上（仅在图层不在最顶部时才移动，避免每次 mousemove 触发样式重建）
+    const order: string[] = (mapInstance.style as any)?._order || [];
+    const topId = order.length ? order[order.length - 1] : '';
+    if (topId !== 'map-tool-draw-nodes')
     try {
       if (mapInstance.getLayer('map-tool-draw-fill')) mapInstance.moveLayer('map-tool-draw-fill');
       if (mapInstance.getLayer('map-tool-draw-stroke-solid')) mapInstance.moveLayer('map-tool-draw-stroke-solid');
@@ -2039,6 +2176,15 @@ export default function Map3D({
 
   // 几何位置与图形包含判断工具函数（用于拖拽移动图形与光标感知）
   const isPointInPolygonRing = (point: [number, number], ring: [number, number][]) => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (let k = 0; k < ring.length; k++) {
+      const rx = ring[k][0], ry = ring[k][1];
+      if (rx < minX) minX = rx;
+      if (rx > maxX) maxX = rx;
+      if (ry < minY) minY = ry;
+      if (ry > maxY) maxY = ry;
+    }
+    if (point[0] < minX || point[0] > maxX || point[1] < minY || point[1] > maxY) return false;
     const [x, y] = point;
     let inside = false;
     for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -2050,8 +2196,50 @@ export default function Map3D({
     return inside;
   };
 
-  const isNearPolygonBorder = (point: [number, number], ring: [number, number][], maxDistKm = 0.8) => {
+  // 纯屏幕像素计算（无 turf），先用包围盒快速剔除，避免 mousemove 时大量几何运算导致卡顿
+  const isNearPolygonBorder = (point: [number, number], ring: [number, number][], _maxDistKm = 0.8) => {
+    const mapInstance = map.current;
+    if (!mapInstance || !ring || ring.length < 2) return false;
     try {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const [x, y] of ring) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+      const ptPx = mapInstance.project(point);
+      const tl = mapInstance.project([minX, maxY]);
+      const br = mapInstance.project([maxX, minY]);
+      const tol = 14;
+      if (ptPx.x < tl.x - tol || ptPx.x > br.x + tol || ptPx.y < tl.y - tol || ptPx.y > br.y + tol) return false;
+      let prev = mapInstance.project(ring[0]);
+      for (let i = 1; i < ring.length; i++) {
+        const cur = mapInstance.project(ring[i]);
+        const dx = cur.x - prev.x;
+        const dy = cur.y - prev.y;
+        const lenSq = dx * dx + dy * dy;
+        let t = lenSq > 0 ? ((ptPx.x - prev.x) * dx + (ptPx.y - prev.y) * dy) / lenSq : 0;
+        t = Math.max(0, Math.min(1, t));
+        if (Math.hypot(ptPx.x - (prev.x + t * dx), ptPx.y - (prev.y + t * dy)) < tol) return true;
+        prev = cur;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const _legacyIsNearPolygonBorder = (point: [number, number], ring: [number, number][], maxDistKm = 0.8) => {
+    try {
+      const mapInstance = map.current;
+      if (mapInstance) {
+        const ptPx = mapInstance.project(point);
+        for (const p of ring) {
+          const pPx = mapInstance.project(p);
+          if (Math.hypot(ptPx.x - pPx.x, ptPx.y - pPx.y) < 14) return true;
+        }
+      }
       for (const p of ring) {
         const d = (turf as any).distance(turf.point(point), turf.point(p), { units: 'kilometers' });
         if (d < maxDistKm) return true;
@@ -2072,7 +2260,7 @@ export default function Map3D({
   // 在绘制图形的外部边缘渲染操作徽章（绝对不遮挡图形内部）：包含 [保存] 按钮（代表完成也代表保存）以及 [删除] 按钮
   const renderDraftActionMarker = (
     ring: [number, number][],
-    shapeType: 'polygon' | 'rect' | 'circle',
+    shapeType: 'polygon' | 'rect' | 'circle' | null,
     color: string
   ) => {
     const mapInstance = map.current;
@@ -2080,12 +2268,13 @@ export default function Map3D({
 
     clearActiveTipMarker();
 
-    if (!ring || ring.length < 3) return;
+    if (!mapInstance) return;
 
     const poly = turf.polygon([ring]);
     const areaVal = turf.area(poly) / 1_000_000;
     const areaKm2 = `${areaVal.toFixed(2)} km²`;
     setDrawAreaStr(areaKm2);
+    return;
 
     // 计算图形的外接包围盒，确保操作徽章锚定在图形上方边缘外部（或下方边缘外部），绝对不遮挡图形！
     const bbox = turf.bbox(poly); // [minLng, minLat, maxLng, maxLat]
@@ -2119,7 +2308,13 @@ export default function Map3D({
     `;
 
     // 阻止鼠标与指针事件冒泡到地图，防止点击按钮时触发地图 mousedown 导致徽章被意外销毁
-    ['mousedown', 'pointerdown', 'mouseup', 'pointerup', 'click', 'dblclick', 'touchstart', 'touchend'].forEach(evt => {
+    badgeEl.addEventListener('mouseenter', () => {
+      if (drawShapeTypeRef.current === 'polygon' && drawPointsRef.current.length >= 3) {
+        const pts = drawPointsRef.current;
+        syncDrawGeoJson(pts, [...pts, pts[0]], drawColorRef.current, isDashedLineRef.current ? 'dashed' : 'solid');
+      }
+    });
+    ['mousedown', 'pointerdown', 'mousemove', 'pointermove', 'mouseup', 'pointerup', 'click', 'dblclick', 'touchstart', 'touchend'].forEach(evt => {
       badgeEl.addEventListener(evt, (e) => e.stopPropagation());
     });
 
@@ -2128,7 +2323,7 @@ export default function Map3D({
       saveBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         e.preventDefault();
-        handleSaveCurrentRegion(ring);
+        handleSaveCurrentRegionRef.current(ring);
       });
     }
 
@@ -2165,6 +2360,7 @@ export default function Map3D({
 
     clearActiveTipMarker();
     selectedSavedRegionIdRef.current = region.id;
+    setSelectedSavedRegionId(region.id);
 
     const ring = [...region.coordinates, region.coordinates[0]];
     const poly = turf.polygon([ring]);
@@ -2196,7 +2392,13 @@ export default function Map3D({
     `;
 
     // 阻止鼠标与指针事件冒泡到地图
-    ['mousedown', 'pointerdown', 'mouseup', 'pointerup', 'click', 'dblclick', 'touchstart', 'touchend'].forEach(evt => {
+    badgeEl.addEventListener('mouseenter', () => {
+      if (drawShapeTypeRef.current === 'polygon' && drawPointsRef.current.length >= 3) {
+        const pts = drawPointsRef.current;
+        syncDrawGeoJson(pts, [...pts, pts[0]], drawColorRef.current, isDashedLineRef.current ? 'dashed' : 'solid');
+      }
+    });
+    ['mousedown', 'pointerdown', 'mousemove', 'pointermove', 'mouseup', 'pointerup', 'click', 'dblclick', 'touchstart', 'touchend'].forEach(evt => {
       badgeEl.addEventListener(evt, (e) => e.stopPropagation());
     });
 
@@ -2228,7 +2430,7 @@ export default function Map3D({
     activeTipMarkerRef.current = marker;
   };
 
-  const syncMeasureGeoJson = (points: [number, number][]) => {
+  const syncMeasureGeoJson = (points: [number, number][], hoverCoord?: [number, number]) => {
     const mapInstance = map.current;
     if (!mapInstance) return;
     ensureToolLayers(mapInstance);
@@ -2264,6 +2466,30 @@ export default function Map3D({
         });
       }
     });
+
+    if (hoverCoord) {
+      if (points.length >= 1) {
+        const lastPt = points[points.length - 1];
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: [lastPt, hoverCoord] },
+          properties: { featureType: 'line', isPreview: true }
+        });
+        const hoverSegDist = (turf as any).distance(turf.point(lastPt), turf.point(hoverCoord), { units: 'kilometers' });
+        const liveTotal = cumulative + hoverSegDist;
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: hoverCoord },
+          properties: { featureType: 'node', distText: `${liveTotal.toFixed(1)} km`, isHover: true }
+        });
+      } else {
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: hoverCoord },
+          properties: { featureType: 'node', distText: '起点', isHover: true }
+        });
+      }
+    }
 
     setMeasureTotalDistStr(cumulative > 0 ? `${cumulative.toFixed(1)} km` : (points.length === 1 ? '0 km' : ''));
 
@@ -2410,6 +2636,33 @@ export default function Map3D({
   };
 
   const handleUndoLastDrawPoint = () => {
+    if (selectedSavedRegionIdRef.current) return;
+    if (false) {
+      const orig: any = null;
+      if (orig && orig.coordinates && orig.coordinates.length >= 3) {
+        const firstC = orig.coordinates[0];
+        const lastC = orig.coordinates[orig.coordinates.length - 1];
+        const isAlreadyClosed = firstC[0] === lastC[0] && firstC[1] === lastC[1];
+        const ringCoords: [number, number][] = isAlreadyClosed ? orig.coordinates : [...orig.coordinates, firstC];
+        const basePts: [number, number][] = isAlreadyClosed ? orig.coordinates.slice(0, -1) : orig.coordinates;
+        const ctrlPts: [number, number][] = basePts.length > 16 ? [basePts[0], basePts[Math.floor(basePts.length / 2)]] : basePts;
+        const col = orig.color || '#2563eb';
+        const dashed = orig.lineStyle === 'dashed';
+        drawColorRef.current = col;
+        setDrawColor(col);
+        isDashedLineRef.current = dashed;
+        setIsDashedLine(dashed);
+        drawPointsRef.current = ctrlPts;
+        draftRingCoordsRef.current = ringCoords;
+        isDrawClosedRef.current = true;
+        setDrawPoints(ctrlPts);
+        setDraftRingCoords(ringCoords);
+        setIsDrawClosed(true);
+        setDrawAreaStr(orig.areaKm2);
+        syncDrawGeoJson(ctrlPts, ringCoords, col, dashed ? 'dashed' : 'solid');
+      }
+      return;
+    }
     const shapeType = drawShapeTypeRef.current;
     if (shapeType === 'polygon') {
       const current = drawPointsRef.current;
@@ -2437,10 +2690,26 @@ export default function Map3D({
   };
 
   const handleClearCurrentDraw = () => {
+    const wasEditingSaved = Boolean(selectedSavedRegionIdRef.current);
+    selectedSavedRegionIdRef.current = null;
+    setSelectedSavedRegionId(null);
+    if (wasEditingSaved) {
+      syncSavedRegionsGeoJson(savedRegionsRef.current, false);
+    }
+    // Keep selectedSavedRegionId managed by handleClearCurrentDraw / handleSaveCurrentRegion
+    draggingVertexIdxRef.current = null;
+    drawPointsRef.current = [];
+    draftRingCoordsRef.current = [];
+    isDrawClosedRef.current = false;
+    dragCurrentRingRef.current = null;
+    dragCurrentPointsRef.current = null;
+    dragStartCoordRef.current = null;
+    dragStartPixelRef.current = null;
     isMovingShapeRef.current = false;
     isDraggingDrawRef.current = false;
     if (map.current) {
       map.current.dragPan.enable();
+      map.current.doubleClickZoom.enable();
       map.current.getCanvas().style.cursor = activeMapToolRef.current === 'draw' ? 'crosshair' : '';
     }
     setDrawPoints([]);
@@ -2504,7 +2773,22 @@ export default function Map3D({
       createdAt: Date.now()
     };
 
-    const next = [...savedRegionsRef.current, newRegion];
+    const editingId = selectedSavedRegionIdRef.current;
+    const next = editingId
+      ? savedRegionsRef.current.map(r =>
+          r.id === editingId
+            ? {
+                ...r,
+                coordinates: rawCoords,
+                areaKm2,
+                color: drawColorRef.current,
+                lineStyle: (isDashedLineRef.current ? 'dashed' : 'solid') as 'solid' | 'dashed'
+              }
+            : r
+        )
+      : [...savedRegionsRef.current, newRegion];
+    drawShapeTypeRef.current = null;
+    setDrawShapeType(null);
     savedRegionsRef.current = next;
     setSavedRegions(next);
     try {
@@ -2514,15 +2798,19 @@ export default function Map3D({
     // 保存后这个图形就应该固定在地图上了，同时提示条就消失！
     clearActiveTipMarker();
     handleClearCurrentDraw();
+    handleClearCurrentDraw();
     syncSavedRegionsGeoJson(next, false);
     window.dispatchEvent(new CustomEvent('saved-regions-updated', { detail: { regions: next } }));
   };
+
+  handleSaveCurrentRegionRef.current = handleSaveCurrentRegion;
 
   const handleClearCurrentTool = () => {
     const mapInstance = map.current;
     if (activeMapTool === 'draw') {
       handleClearCurrentDraw();
     } else if (activeMapTool === 'measure') {
+      isMeasureCompletedRef.current = false;
       setMeasurePoints([]);
       setMeasureTotalDistStr('');
       if (mapInstance) {
@@ -2541,6 +2829,7 @@ export default function Map3D({
     clearActiveTipMarker();
     if (map.current) {
       map.current.dragPan.enable();
+      map.current.doubleClickZoom.enable();
       map.current.getCanvas().style.cursor = '';
     }
     handleClearCurrentTool();
@@ -2557,6 +2846,8 @@ export default function Map3D({
       const customEvent = e as CustomEvent<{ tool: 'draw' | 'inspect' | 'measure' | null }>;
       const nextTool = customEvent.detail?.tool || null;
       setActiveMapTool(nextTool);
+      drawShapeTypeRef.current = null;
+      setDrawShapeType(null);
 
       const mapInstance = map.current;
       if (mapInstance) {
@@ -2568,10 +2859,17 @@ export default function Map3D({
           canvas.style.cursor = '';
         }
 
+        if (nextTool === 'measure' || nextTool === 'draw') {
+          mapInstance.doubleClickZoom.disable();
+        } else {
+          mapInstance.doubleClickZoom.enable();
+        }
+
         if (nextTool !== 'draw') {
           handleClearCurrentDraw();
         }
         if (nextTool !== 'measure') {
+          isMeasureCompletedRef.current = false;
           setMeasurePoints([]);
           setMeasureTotalDistStr('');
           const measureSource = mapInstance.getSource('map-tool-measure-source') as maplibregl.GeoJSONSource;
@@ -2591,11 +2889,24 @@ export default function Map3D({
   }, []);
 
   // 当 activeMapTool 改变时，控制编辑与只读模式的切换（退出编辑不可新增也不可删除，只留图形在上面）
+  // measure / draw 模式下禁止 doubleClickZoom 防止双击完成时放大地图与卡顿
+  useEffect(() => {
+    const mapInstance = map.current;
+    if (!mapInstance) return;
+    if (activeMapTool === 'measure' || activeMapTool === 'draw') {
+      mapInstance.doubleClickZoom.disable();
+    } else {
+      mapInstance.doubleClickZoom.enable();
+    }
+    if (activeMapTool !== 'measure') {
+      isMeasureCompletedRef.current = false;
+    }
+  }, [activeMapTool]);
   useEffect(() => {
     const mapInstance = map.current;
     if (!mapInstance) return;
     clearActiveTipMarker();
-    if (mapInstance.isStyleLoaded()) {
+    if ((mapInstance.style as any)?._loaded) {
       syncSavedRegionsGeoJson(savedRegionsRef.current, false);
     }
   }, [activeMapTool]);
@@ -2622,7 +2933,23 @@ export default function Map3D({
         Number(e.lngLat.lat.toFixed(5))
       ];
 
-      // 1. 如果已有闭合草稿图形且鼠标点在草稿内部或边线上，进入“拖拽移动图形”模式
+      // 1. 如果已有闭合草稿图形且鼠标点在控制顶点或草稿内部，进入拖拽编辑/平移模式
+      if (isDrawClosedRef.current && draftRingCoordsRef.current.length >= 3) {
+        const vIdx = drawPointsRef.current.findIndex(pt => {
+          const px = mapInstance.project(pt);
+          return Math.hypot(e.point.x - px.x, e.point.y - px.y) < 14;
+        });
+        if (vIdx !== -1) {
+          draggingVertexIdxRef.current = vIdx;
+          initialDragRingRef.current = [...draftRingCoordsRef.current];
+          initialDragPointsRef.current = [...drawPointsRef.current];
+          dragCurrentRingRef.current = [...draftRingCoordsRef.current];
+          dragCurrentPointsRef.current = [...drawPointsRef.current];
+          mapInstance.dragPan.disable();
+          mapInstance.getCanvas().style.cursor = 'crosshair';
+          return;
+        }
+      }
       if (isDrawClosedRef.current && draftRingCoordsRef.current.length >= 3) {
         if (isCoordInDraftShape(coord, draftRingCoordsRef.current)) {
           isMovingShapeRef.current = true;
@@ -2643,7 +2970,9 @@ export default function Map3D({
       // 矩形：第一个点为起始角点！
       // 任意形状：完全由用户逐点点击确定多边形顶点！
       const shapeType = drawShapeTypeRef.current;
-      if (shapeType === 'rect' || shapeType === 'circle') {
+      const isClickingSavedOnDown = (drawPointsRef.current.length === 0 || isDrawClosedRef.current) && savedRegionsRef.current.some(r => r.coordinates && r.coordinates.length >= 3 && isCoordInDraftShape(coord, [...r.coordinates, r.coordinates[0]]));
+      if ((shapeType === 'rect' || shapeType === 'circle') && (drawPointsRef.current.length === 0 || isDrawClosedRef.current) && !isClickingSavedOnDown) {
+        dragStartPixelRef.current = [e.point.x, e.point.y];
         isDraggingDrawRef.current = true;
         dragStartCoordRef.current = coord;
         dragCurrentRingRef.current = null;
@@ -2654,12 +2983,23 @@ export default function Map3D({
       }
     };
 
+    let lastMoveTs = 0;
     const handleCanvasMouseMove = (e: maplibregl.MapMouseEvent) => {
+      if (!activeMapToolRef.current) return;
+      const now = performance.now();
+      if (now - lastMoveTs < 14) return;
+      lastMoveTs = now;
       const tool = activeMapToolRef.current;
       const coord: [number, number] = [
         Number(e.lngLat.lng.toFixed(5)),
         Number(e.lngLat.lat.toFixed(5))
       ];
+
+      if (tool === 'measure') {
+        if (!isMeasureCompletedRef.current) syncMeasureGeoJson(measurePointsRef.current, coord);
+        return;
+      }
+
 
       if (tool === 'inspect' && !inspectData) {
         const info = getInspectData(coord[0], coord[1]);
@@ -2670,6 +3010,24 @@ export default function Map3D({
       if (tool === 'draw') {
         const shapeType = drawShapeTypeRef.current;
 
+        // A0. 正在拖拽控制顶点调整图形
+        if (draggingVertexIdxRef.current !== null && initialDragPointsRef.current) {
+          const vIdx = draggingVertexIdxRef.current;
+          const newPoints = [...initialDragPointsRef.current];
+          newPoints[vIdx] = coord;
+          let newRing: [number, number][];
+          if (newPoints.length === 2 && (initialDragRingRef.current?.length || 0) > 16) {
+            newRing = generateCircleFromBoundary(newPoints[0], newPoints[1]);
+          } else if (newPoints.length === 2) {
+            newRing = generateRectCoords(newPoints[0], newPoints[1]);
+          } else {
+            newRing = [...newPoints, newPoints[0]];
+          }
+          dragCurrentPointsRef.current = newPoints;
+          dragCurrentRingRef.current = newRing;
+          syncDrawGeoJson(newPoints, newRing, drawColorRef.current, isDashedLineRef.current ? 'dashed' : 'solid');
+          return;
+        }
         // A. 正在拖拽平移已有闭合草稿图形
         if (isMovingShapeRef.current && dragStartCoordRef.current && initialDragRingRef.current) {
           const deltaLng = coord[0] - dragStartCoordRef.current[0];
@@ -2697,12 +3055,14 @@ export default function Map3D({
 
           if (shapeType === 'rect') {
             const ring = generateRectCoords(p1, p2);
+            draftRingCoordsRef.current = ring;
             dragCurrentRingRef.current = ring;
             dragCurrentPointsRef.current = [p1, p2];
             syncDrawGeoJson([p1, p2], ring, drawColorRef.current, isDashedLineRef.current ? 'dashed' : 'solid');
           } else if (shapeType === 'circle') {
             // p1 为起始边界点，p2 为移动对向边界点（两点定直径）
             const ring = generateCircleFromBoundary(p1, p2);
+            draftRingCoordsRef.current = ring;
             dragCurrentRingRef.current = ring;
             dragCurrentPointsRef.current = [p1, p2];
             syncDrawGeoJson([p1, p2], ring, drawColorRef.current, isDashedLineRef.current ? 'dashed' : 'solid');
@@ -2729,10 +3089,12 @@ export default function Map3D({
           } else if (shapeType === 'rect' && currentPoints.length === 1) {
             // 单击起始角点后的对角点移动预览
             const ring = generateRectCoords(currentPoints[0], coord);
+            draftRingCoordsRef.current = ring;
             syncDrawGeoJson([currentPoints[0], coord], ring, drawColorRef.current, isDashedLineRef.current ? 'dashed' : 'solid');
           } else if (shapeType === 'circle' && currentPoints.length === 1) {
             // 单击起始边界点后的对向边界点移动圆形预览
             const ring = generateCircleFromBoundary(currentPoints[0], coord);
+            draftRingCoordsRef.current = ring;
             syncDrawGeoJson([currentPoints[0], coord], ring, drawColorRef.current, isDashedLineRef.current ? 'dashed' : 'solid');
           }
         }
@@ -2754,7 +3116,8 @@ export default function Map3D({
           return;
         }
 
-        // 3) 默认十字标
+        // 3) 默认光标（选中新增形状时为十字标，未选中时为默认箭头）
+        mapInstance.getCanvas().style.cursor = shapeType ? 'crosshair' : '';
         mapInstance.getCanvas().style.cursor = 'crosshair';
       }
     };
@@ -2768,8 +3131,10 @@ export default function Map3D({
         Number(e.lngLat.lat.toFixed(5))
       ];
 
-      // A. 结束图形移动拖拽
-      if (isMovingShapeRef.current) {
+      // A. 结束图形移动拖拽或顶点拖拽
+      if (isMovingShapeRef.current || draggingVertexIdxRef.current !== null) {
+        isMovingShapeRef.current = false;
+        draggingVertexIdxRef.current = null;
         isMovingShapeRef.current = false;
         mapInstance.dragPan.enable();
         mapInstance.getCanvas().style.cursor = 'grab';
@@ -2777,6 +3142,9 @@ export default function Map3D({
         if (dragCurrentRingRef.current && dragCurrentRingRef.current.length >= 3) {
           const finalRing = dragCurrentRingRef.current;
           const finalPoints = dragCurrentPointsRef.current || drawPointsRef.current;
+          draftRingCoordsRef.current = finalRing;
+          drawPointsRef.current = finalPoints;
+          isDrawClosedRef.current = true;
           setDraftRingCoords(finalRing);
           setDrawPoints(finalPoints);
           setIsDrawClosed(true);
@@ -2800,13 +3168,18 @@ export default function Map3D({
         if (p1) {
           const distKm = (turf as any).distance(turf.point(p1), turf.point(coord), { units: 'kilometers' });
           // 如果拖拽位移大于 50 米，则认为完成了拖拽绘制！
-          if (distKm > 0.05) {
+          const startPx = dragStartPixelRef.current;
+          const pxDist = startPx ? Math.hypot(e.point.x - startPx[0], e.point.y - startPx[1]) : 999;
+          if (pxDist > 8 && distKm > 0.01) {
             const shapeType = drawShapeTypeRef.current;
             if (shapeType === 'circle' || shapeType === 'rect') {
               const finalRing = shapeType === 'circle' 
                 ? generateCircleFromBoundary(p1, coord) 
                 : generateRectCoords(p1, coord);
               const finalPoints: [number, number][] = [p1, coord];
+              draftRingCoordsRef.current = finalRing;
+              drawPointsRef.current = finalPoints;
+              isDrawClosedRef.current = true;
               setDraftRingCoords(finalRing);
               setDrawPoints(finalPoints);
               setIsDrawClosed(true);
@@ -2855,9 +3228,41 @@ export default function Map3D({
             return isCoordInDraftShape(coord, [...r.coordinates, r.coordinates[0]]);
           });
 
-          if (clickedSaved) {
+          if (clickedSaved && !shapeType) {
             handleClearCurrentDraw();
-            renderSavedRegionTipMarker(clickedSaved);
+            handleClearCurrentDraw();
+            selectedSavedRegionIdRef.current = clickedSaved.id;
+            setSelectedSavedRegionId(clickedSaved.id);
+            const regionColor = clickedSaved.color || '#2563eb';
+            const regionDashed = clickedSaved.lineStyle === 'dashed';
+            drawColorRef.current = regionColor;
+            setDrawColor(regionColor);
+            isDashedLineRef.current = regionDashed;
+            setIsDashedLine(regionDashed);
+            const firstC = clickedSaved.coordinates[0];
+            const lastC = clickedSaved.coordinates[clickedSaved.coordinates.length - 1];
+            const isAlreadyClosed = firstC[0] === lastC[0] && firstC[1] === lastC[1];
+            const ringCoords: [number, number][] = isAlreadyClosed ? clickedSaved.coordinates : [...clickedSaved.coordinates, firstC];
+            const basePts: [number, number][] = isAlreadyClosed ? clickedSaved.coordinates.slice(0, -1) : clickedSaved.coordinates;
+            const ctrlPts: [number, number][] = basePts.length > 16 ? [basePts[0], basePts[Math.floor(basePts.length / 2)]] : basePts;
+            drawPointsRef.current = ctrlPts;
+            draftRingCoordsRef.current = ringCoords;
+            isDrawClosedRef.current = true;
+            setDrawPoints(ctrlPts);
+            setDraftRingCoords(ringCoords);
+            setIsDrawClosed(true);
+            setDrawAreaStr(clickedSaved.areaKm2);
+            syncSavedRegionsGeoJson(savedRegionsRef.current, true);
+            syncDrawGeoJson(ctrlPts, ringCoords, regionColor, regionDashed ? 'dashed' : 'solid');
+            return;
+          }
+          if (selectedSavedRegionIdRef.current && !clickedSaved) {
+            clearActiveTipMarker();
+            handleClearCurrentDraw();
+            return;
+          }
+          if (false) {
+            return;
             return;
           }
         }
@@ -2868,6 +3273,9 @@ export default function Map3D({
         if (shapeType === 'polygon') {
           // 如果当前图形已经闭合，再次点击代表重新开始绘制新任意多边形
           if (isDrawClosedRef.current) {
+            drawPointsRef.current = [coord];
+            draftRingCoordsRef.current = [];
+            isDrawClosedRef.current = false;
             const next = [coord];
             setDrawPoints(next);
             setDraftRingCoords([]);
@@ -2886,7 +3294,14 @@ export default function Map3D({
               distToFirst = (turf as any).distance(turf.point(coord), turf.point(first), { units: 'kilometers' });
             } catch (e) {}
 
-            if (distToFirst < 0.8) {
+            const firstPx = mapInstance.project(first);
+            const lastPt = currentPoints[currentPoints.length - 1];
+            const lastPx = mapInstance.project(lastPt);
+            const isNearFirstPx = Math.hypot(e.point.x - firstPx.x, e.point.y - firstPx.y) < 18;
+            const isNearLastPx = Math.hypot(e.point.x - lastPx.x, e.point.y - lastPx.y) < 12;
+            if (distToFirst < 0.8 || isNearFirstPx || isNearLastPx) {
+              isDrawClosedRef.current = true;
+              draftRingCoordsRef.current = [...currentPoints, currentPoints[0]];
               setIsDrawClosed(true);
               const ring = [...currentPoints, currentPoints[0]];
               setDraftRingCoords(ring);
@@ -2898,6 +3313,12 @@ export default function Map3D({
 
           // 用户点击添加新点（多边形顶点）
           const next = [...currentPoints, coord];
+          drawPointsRef.current = next;
+          if (next.length >= 3) {
+            draftRingCoordsRef.current = [...next, next[0]];
+          } else {
+            draftRingCoordsRef.current = [];
+          }
           setDrawPoints(next);
 
           if (next.length >= 3) {
@@ -2921,6 +3342,9 @@ export default function Map3D({
               Number((coord[1] + 0.12).toFixed(5))
             ];
             const previewRing = generateRectCoords(coord, defaultP2);
+            drawPointsRef.current = [coord];
+            draftRingCoordsRef.current = previewRing;
+            isDrawClosedRef.current = false;
             const next = [coord];
             setDrawPoints(next);
             setDraftRingCoords(previewRing);
@@ -2931,10 +3355,13 @@ export default function Map3D({
             const p1 = currentPoints[0];
             const p2 = coord;
             const ring = generateRectCoords(p1, p2);
+            draftRingCoordsRef.current = ring;
             setDrawPoints([p1, p2]);
             setDraftRingCoords(ring);
             setIsDrawClosed(true);
             syncDrawGeoJson([p1, p2], ring, drawColorRef.current, isDashedLineRef.current ? 'dashed' : 'solid');
+            drawPointsRef.current = [p1, p2];
+            isDrawClosedRef.current = true;
             renderDraftActionMarker(ring, 'rect', drawColorRef.current);
           }
         } else if (shapeType === 'circle') {
@@ -2945,6 +3372,9 @@ export default function Map3D({
               Number((coord[1] + 0.14).toFixed(5))
             ];
             const previewRing = generateCircleFromBoundary(coord, defaultP2);
+            drawPointsRef.current = [coord];
+            draftRingCoordsRef.current = previewRing;
+            isDrawClosedRef.current = false;
             const next = [coord];
             setDrawPoints(next);
             setDraftRingCoords(previewRing);
@@ -2956,17 +3386,28 @@ export default function Map3D({
             const p1 = currentPoints[0];
             const p2 = coord;
             const ring = generateCircleFromBoundary(p1, p2);
+            draftRingCoordsRef.current = ring;
             setDrawPoints([p1, p2]);
             setDraftRingCoords(ring);
             setIsDrawClosed(true);
             syncDrawGeoJson([p1, p2], ring, drawColorRef.current, isDashedLineRef.current ? 'dashed' : 'solid');
+            drawPointsRef.current = [p1, p2];
+            isDrawClosedRef.current = true;
             renderDraftActionMarker(ring, 'circle', drawColorRef.current);
           }
         }
       } else if (tool === 'measure') {
+        if (isMeasureCompletedRef.current) {
+          isMeasureCompletedRef.current = false;
+          const next: [number, number][] = [coord];
+          setMeasurePoints(next);
+          measurePointsRef.current = next;
+          syncMeasureGeoJson(next, coord);
+          return;
+        }
         const next = [...measurePointsRef.current, coord];
         setMeasurePoints(next);
-        syncMeasureGeoJson(next);
+        syncMeasureGeoJson(next, coord);
       } else if (tool === 'inspect') {
         const info = getInspectData(coord[0], coord[1]);
         setInspectData(info);
@@ -2975,6 +3416,31 @@ export default function Map3D({
     };
 
     const handleCanvasDblClick = (e: maplibregl.MapMouseEvent) => {
+      e.preventDefault?.();
+      if ((e as any).originalEvent) {
+        (e as any).originalEvent.preventDefault?.();
+        (e as any).originalEvent.stopPropagation?.();
+      }
+
+      if (activeMapToolRef.current === 'measure') {
+        isMeasureCompletedRef.current = true;
+        const currentPts = [...measurePointsRef.current];
+        if (currentPts.length >= 2) {
+          const pLast = currentPts[currentPts.length - 1];
+          const pPrev = currentPts[currentPts.length - 2];
+          try {
+            const d = (turf as any).distance(turf.point(pLast), turf.point(pPrev), { units: 'kilometers' });
+            if (d < 0.05) {
+              currentPts.pop();
+            }
+          } catch (err) {}
+        }
+        setMeasurePoints(currentPts);
+        measurePointsRef.current = currentPts;
+        syncMeasureGeoJson(currentPts);
+        return;
+      }
+
       const tool = activeMapToolRef.current;
       if (!tool) return;
       e.preventDefault();
@@ -2984,6 +3450,8 @@ export default function Map3D({
         if (shapeType === 'polygon') {
           const currentPoints = drawPointsRef.current;
           if (currentPoints.length >= 3 && !isDrawClosedRef.current) {
+            isDrawClosedRef.current = true;
+            draftRingCoordsRef.current = [...currentPoints, currentPoints[0]];
             setIsDrawClosed(true);
             const ring = [...currentPoints, currentPoints[0]];
             setDraftRingCoords(ring);
@@ -3003,6 +3471,14 @@ export default function Map3D({
       }
     };
 
+    const handleCanvasMouseLeave = () => {
+      if (activeMapToolRef.current === 'measure') {
+        if (!isMeasureCompletedRef.current) {
+          syncMeasureGeoJson(measurePointsRef.current);
+        }
+      }
+    };
+    mapInstance.getCanvas().addEventListener('mouseleave', handleCanvasMouseLeave);
     mapInstance.on('mousedown', handleCanvasMouseDown);
     mapInstance.on('mousemove', handleCanvasMouseMove);
     mapInstance.on('mouseup', handleCanvasMouseUp);
@@ -3011,6 +3487,7 @@ export default function Map3D({
     window.addEventListener('mouseup', handleGlobalMouseUp);
 
     return () => {
+      mapInstance.getCanvas().removeEventListener('mouseleave', handleCanvasMouseLeave);
       mapInstance.off('mousedown', handleCanvasMouseDown);
       mapInstance.off('mousemove', handleCanvasMouseMove);
       mapInstance.off('mouseup', handleCanvasMouseUp);
@@ -3021,15 +3498,30 @@ export default function Map3D({
   }, [inspectData]);
 
   return (
-    <div className={`absolute inset-0 z-0 ${activeNav === '效果评估' ? 'map-effect-eval-mode' : ''}`}>
+    <div data-map-interactive="true" className={`absolute inset-0 z-0 ${activeNav === '效果评估' ? 'map-effect-eval-mode' : ''} ${activeMapTool === 'draw' ? '[&_.maplibregl-marker]:pointer-events-none [&_.maplibregl-popup]:pointer-events-none' : ''}`}>
       <div ref={mapContainer} className="w-full h-full bg-slate-200" />
 
       {/* 简洁的小操作面板（严格按照用户截图与指令设计） */}
       {activeMapTool === 'draw' && (
-        <div className={`absolute ${activeNav === '效果评估' ? 'top-3' : 'top-[76px]'} left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-md text-slate-800 rounded-2xl shadow-xl border border-slate-200/90 p-3 select-none pointer-events-auto animate-fade-in font-sans w-[305px] flex flex-col gap-2.5`}>
+        <div
+          onMouseEnter={() => {
+            if (drawShapeTypeRef.current === 'polygon' && drawPointsRef.current.length >= 3) {
+              const pts = drawPointsRef.current;
+              syncDrawGeoJson(pts, [...pts, pts[0]], drawColorRef.current, isDashedLineRef.current ? 'dashed' : 'solid');
+            }
+          }}
+          className={`absolute ${activeNav === '效果评估' ? 'top-3' : 'top-[76px]'} left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-md text-slate-800 rounded-xl shadow-lg border border-slate-200/80 p-3 select-none pointer-events-auto animate-fade-in font-sans w-[270px] flex flex-col gap-2`}
+        >
           {/* 标题栏 */}
           <div className="flex items-center justify-between">
-            <span className="font-bold text-slate-900 text-sm tracking-wide">绘制区域</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-slate-800 text-xs tracking-wide">绘制区域</span>
+              {drawAreaStr && (
+                <span className="text-[10.5px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/70">
+                  {drawAreaStr}
+                </span>
+              )}
+            </div>
             <button
               onClick={handleCloseCurrentTool}
               className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 text-xs cursor-pointer transition-colors"
@@ -3043,40 +3535,46 @@ export default function Map3D({
           <div className="grid grid-cols-3 gap-1.5">
             <button
               onClick={() => {
-                setDrawShapeType('circle');
+                const next = drawShapeType === 'circle' ? null : 'circle';
+                drawShapeTypeRef.current = next;
+                setDrawShapeType(next);
                 handleClearCurrentDraw();
               }}
-              className={`h-8 rounded-xl border flex items-center justify-center gap-1 text-[11.5px] transition-all cursor-pointer ${
+              className={`h-7 rounded-lg border flex items-center justify-center gap-1.5 text-[11px] transition-all cursor-pointer ${
                 drawShapeType === 'circle'
                   ? 'border-blue-500 bg-blue-50/50 text-blue-600 font-bold shadow-xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
               }`}
             >
-              <span className="w-3.5 h-3.5 rounded-full border border-current inline-block shrink-0" />
+              <span className="w-3 h-3 rounded-full border border-current inline-block shrink-0" />
               <span>圆形</span>
             </button>
 
             <button
               onClick={() => {
-                setDrawShapeType('rect');
+                const next = drawShapeType === 'rect' ? null : 'rect';
+                drawShapeTypeRef.current = next;
+                setDrawShapeType(next);
                 handleClearCurrentDraw();
               }}
-              className={`h-8 rounded-xl border flex items-center justify-center gap-1 text-[11.5px] transition-all cursor-pointer ${
+              className={`h-7 rounded-lg border flex items-center justify-center gap-1.5 text-[11px] transition-all cursor-pointer ${
                 drawShapeType === 'rect'
                   ? 'border-blue-500 bg-blue-50/50 text-blue-600 font-bold shadow-xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
               }`}
             >
-              <span className="w-3.5 h-3.5 border border-current rounded-[2px] inline-block shrink-0" />
+              <span className="w-3 h-3 border border-current rounded-[2px] inline-block shrink-0" />
               <span>矩形</span>
             </button>
 
             <button
               onClick={() => {
-                setDrawShapeType('polygon');
+                const next = drawShapeType === 'polygon' ? null : 'polygon';
+                drawShapeTypeRef.current = next;
+                setDrawShapeType(next);
                 handleClearCurrentDraw();
               }}
-              className={`h-8 rounded-xl border flex items-center justify-center gap-1 text-[11.5px] transition-all cursor-pointer ${
+              className={`h-7 rounded-lg border flex items-center justify-center gap-1.5 text-[11px] transition-all cursor-pointer ${
                 drawShapeType === 'polygon'
                   ? 'border-blue-500 bg-blue-50/50 text-blue-600 font-bold shadow-xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -3096,12 +3594,13 @@ export default function Map3D({
           </div>
 
           {/* 第二行：操作按钮 [ 撤销 ] [ 清空 ] [ 颜色选择 ] [ 虚实线型 ] [ 保存 ] */}
-          <div className="flex items-center gap-2 relative">
-            {/* 撤销上点 */}
+          <div className={`${(drawShapeType !== null || selectedSavedRegionId !== null) ? 'flex' : 'hidden'} items-center gap-1.5 relative`}>
+            {/* 撤销上点（仅在绘制新图形时提供，已有图形编辑没有撤销功能） */}
+            {!selectedSavedRegionId && (
             <button
               onClick={handleUndoLastDrawPoint}
               disabled={drawPoints.length === 0}
-              className={`w-8 h-8 rounded-xl border flex items-center justify-center text-slate-700 transition-all ${
+              className={`w-7 h-7 rounded-lg border flex items-center justify-center text-slate-700 transition-all ${
                 drawPoints.length > 0 
                   ? 'border-slate-200 bg-white hover:bg-slate-100 hover:text-blue-600 cursor-pointer shadow-xs active:scale-95' 
                   : 'border-slate-200/60 bg-slate-50 text-slate-300 cursor-not-allowed'
@@ -3114,18 +3613,27 @@ export default function Map3D({
               </svg>
             </button>
 
+            )}
+
             {/* 清空草稿 */}
             <button
-              onClick={handleClearCurrentDraw}
+              onClick={() => {
+                if (drawPointsRef.current.length > 0 || draftRingCoordsRef.current.length > 0) {
+                  handleClearCurrentDraw();
+                } else if (selectedSavedRegionIdRef.current) {
+                  handleDeleteSavedRegion(selectedSavedRegionIdRef.current);
+                }
+              }}
               disabled={drawPoints.length === 0}
-              className={`w-8 h-8 rounded-xl border flex items-center justify-center text-slate-700 transition-all ${
+              className={`w-7 h-7 rounded-lg border flex items-center justify-center text-slate-700 transition-all ${
                 drawPoints.length > 0 
-                  ? 'border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 cursor-pointer shadow-xs active:scale-95' 
+                  ? '!w-auto px-2.5 gap-1 text-[11.5px] font-bold border-rose-200 bg-rose-50/60 text-rose-600 hover:bg-rose-600 hover:border-rose-600 hover:text-white cursor-pointer shadow-xs active:scale-95' 
                   : 'border-slate-200/60 bg-slate-50 text-slate-300 cursor-not-allowed'
               }`}
-              title="清空当前草稿"
+              title="删除当前绘制区域"
+              style={{ display: 'none' }}
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 6h18"/>
                 <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
                 <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
@@ -3138,13 +3646,13 @@ export default function Map3D({
             <div className="relative">
               <button
                 onClick={() => setShowColorPicker(!showColorPicker)}
-                className="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center cursor-pointer shadow-xs active:scale-95 transition-all"
+                className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center cursor-pointer shadow-xs active:scale-95 transition-all"
                 title="选择图形填充与线条颜色"
               >
-                <div className="w-5 h-5 rounded-[4px] shadow-xs" style={{ backgroundColor: drawColor }} />
+                <div className="w-4 h-4 rounded-[3px] shadow-xs" style={{ backgroundColor: drawColor }} />
               </button>
               {showColorPicker && (
-                <div className="absolute top-10 left-0 z-50 bg-white/98 backdrop-blur-md border border-slate-200 rounded-xl shadow-xl p-1.5 flex items-center gap-1.5 animate-fade-in">
+                <div className="absolute top-8.5 left-0 z-50 bg-white/98 backdrop-blur-md border border-slate-200 rounded-lg shadow-xl p-1 flex items-center gap-1 animate-fade-in">
                   {['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'].map(c => (
                     <button
                       key={c}
@@ -3152,7 +3660,7 @@ export default function Map3D({
                         setDrawColor(c);
                         setShowColorPicker(false);
                       }}
-                      className={`w-6 h-6 rounded-md cursor-pointer transition-transform hover:scale-110 flex items-center justify-center ${drawColor === c ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+                      className={`w-5 h-5 rounded cursor-pointer transition-transform hover:scale-110 flex items-center justify-center ${drawColor === c ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -3163,23 +3671,48 @@ export default function Map3D({
             {/* 线型切换 (~ 波浪/虚实) */}
             <button
               onClick={() => setIsDashedLine(!isDashedLine)}
-              className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 ${
+              className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 ${
                 isDashedLine
                   ? 'border-blue-500 bg-blue-50 text-blue-600'
                   : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
               }`}
               title={isDashedLine ? '当前：虚线（点击切换为实线）' : '当前：实线（点击切换为虚线）'}
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M2 12c3-6 5 6 8 0s5 6 8 0 3-3 4-2" />
               </svg>
             </button>
 
-            {/* 保存当前区域按钮 */}
+            {/* 删除与保存操作按钮组 */}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <button
+                onClick={() => {
+                  if (selectedSavedRegionIdRef.current) {
+                    handleDeleteSavedRegion(selectedSavedRegionIdRef.current);
+                  } else if (drawPointsRef.current.length > 0 || draftRingCoordsRef.current.length > 0) {
+                    handleClearCurrentDraw();
+                  }
+                }}
+                disabled={!(drawPoints.length > 0 || draftRingCoords.length > 0 || !!selectedSavedRegionId)}
+                className={`h-7 px-2.5 rounded-lg border flex items-center justify-center gap-1 text-[11px] font-bold transition-all ${
+                  (drawPoints.length > 0 || draftRingCoords.length > 0 || !!selectedSavedRegionId)
+                    ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:border-rose-600 hover:text-white cursor-pointer shadow-xs active:scale-95'
+                    : 'border-slate-200/60 bg-slate-50 text-slate-300 cursor-not-allowed'
+                }`}
+                title="删除当前区域"
+              >
+                <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18"/>
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                </svg>
+                <span>删除</span>
+              </button>
+            </div>
             <button
               onClick={() => handleSaveCurrentRegion()}
               disabled={!(draftRingCoords.length >= 3 || drawPoints.length >= 3)}
-              className={`h-8 px-2.5 rounded-xl border flex items-center justify-center gap-1 text-[11.5px] font-bold transition-all ml-auto ${
+              className={`h-7 px-2.5 rounded-lg border flex items-center justify-center gap-1 text-[11px] font-bold transition-all ${
                 (draftRingCoords.length >= 3 || drawPoints.length >= 3)
                   ? 'border-blue-600 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-xs active:scale-95'
                   : 'border-slate-200/60 bg-slate-50 text-slate-300 cursor-not-allowed'
@@ -3191,67 +3724,10 @@ export default function Map3D({
             </button>
           </div>
 
-          {/* 操作提示说明 */}
-          <div className="text-[10.5px] text-slate-400 font-sans px-0.5 pt-0.5 leading-tight text-center border-t border-slate-100">
-            {drawShapeType === 'circle' && '确定起始边界点，拖拽或点击对向边界点完成'}
-            {drawShapeType === 'rect' && '确定起始角点，拖拽或点击对角点完成'}
-            {drawShapeType === 'polygon' && '连续点击绘制顶点，双击或点击首点闭合'}
-          </div>
         </div>
       )}
 
-      {/* 测距 / 鼠标取值顶部浮动控制条 */}
-      {(activeMapTool === 'measure' || activeMapTool === 'inspect') && (
-        <div className={`absolute ${activeNav === '效果评估' ? 'top-3' : 'top-[76px]'} left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 bg-white/95 backdrop-blur-md text-slate-800 px-4 py-2 rounded-full shadow-xl border border-slate-200/90 text-xs animate-fade-in pointer-events-auto`}>
-          <div className="flex items-center gap-1.5 font-bold">
-            {activeMapTool === 'inspect' && (
-              <>
-                <Crosshair className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span className="text-blue-700">鼠标取值</span>
-              </>
-            )}
-            {activeMapTool === 'measure' && (
-              <>
-                <Ruler className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span className="text-amber-700">测距工具</span>
-              </>
-            )}
-          </div>
-
-          <span className="w-px h-3.5 bg-slate-200 mx-0.5" />
-
-          <div className="text-[11px] text-slate-600 max-w-[320px] truncate">
-            {activeMapTool === 'measure' && (
-              measurePoints.length === 0 
-                ? '在地图上单击设置起点（起点为 0 km）' 
-                : `已选 ${measurePoints.length} 点，累加测距总长: ${measureTotalDistStr || '0 km'}`
-            )}
-            {activeMapTool === 'inspect' && (
-              inspectData 
-                ? `已锁定 [${inspectData.coord[0]}°E, ${inspectData.coord[1]}°N] ${inspectData.weatherName}: ${inspectData.weatherValue}` 
-                : '单击地图任意点位查看经纬度与叠加气象值'
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5 ml-1">
-            <button
-              onClick={handleClearCurrentTool}
-              className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 text-[10.5px] font-medium cursor-pointer transition-colors"
-            >
-              清除
-            </button>
-            <button
-              onClick={handleCloseCurrentTool}
-              className="w-5 h-5 flex items-center justify-center rounded-full bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 text-[11px] font-bold cursor-pointer transition-colors"
-              title="退出工具"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 效果评估右上角操作按钮：复位视角（纯二维显示） */}
+            {/* 效果评估右上角操作按钮：复位视角（纯二维显示） */}
       {activeNav === '效果评估' && (
         <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5 select-none pointer-events-auto">
           <button

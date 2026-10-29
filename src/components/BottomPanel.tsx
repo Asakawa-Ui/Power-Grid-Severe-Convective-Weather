@@ -287,7 +287,7 @@ export default function BottomPanel({
   }
 
   const containerClasses = variant === 'global' 
-    ? "absolute bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/75 backdrop-blur-md shadow-2xl px-4 py-2.5 rounded-2xl flex items-center gap-3 border border-slate-200/80 w-[calc(100vw-820px)] min-w-[580px] max-w-4xl"
+    ? `absolute bottom-6 left-6 ${activeNav === '作业指挥' ? 'right-[392px]' : 'right-[380px]'} z-50 bg-white/80 backdrop-blur-md shadow-2xl px-5 py-2.5 rounded-2xl flex items-center gap-3 border border-slate-200/80`
     : "absolute bottom-2 left-2 right-2 z-50 bg-white/75 backdrop-blur-md shadow-lg px-3 py-2 rounded-xl flex items-center gap-2.5 border border-slate-200/80";
 
   // NWP Mode percentage calculation

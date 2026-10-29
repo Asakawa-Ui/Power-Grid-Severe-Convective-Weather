@@ -105,33 +105,6 @@ export default function MapLayersPanel({
   // Active map tool: 'draw' | 'inspect' | 'measure' | null
   const [activeTool, setActiveTool] = useState<'draw' | 'inspect' | 'measure' | null>(null);
 
-  // Saved regions state synced with Map3D and localStorage
-  const [savedRegions, setSavedRegions] = useState<Array<{
-    id: string;
-    name: string;
-    coordinates: [number, number][];
-    areaKm2: string;
-    createdAt: number;
-  }>>(() => {
-    try {
-      const saved = localStorage.getItem('map-saved-drawn-regions');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return [];
-  });
-
-  useEffect(() => {
-    const handleSavedRegionsUpdated = (e: Event) => {
-      const customEvent = e as CustomEvent<{ regions: any[] }>;
-      if (customEvent.detail?.regions) {
-        setSavedRegions(customEvent.detail.regions);
-      }
-    };
-    window.addEventListener('saved-regions-updated', handleSavedRegionsUpdated);
-    return () => {
-      window.removeEventListener('saved-regions-updated', handleSavedRegionsUpdated);
-    };
-  }, []);
 
   // Accordion open/collapse states (In 效果评估, only weather is expanded by default, others are collapsed)
   const [expanded, setExpanded] = useState(() => {
@@ -279,7 +252,7 @@ export default function MapLayersPanel({
 
     return (
       <div 
-        className="absolute bottom-[72px] right-3 z-40 w-[114px] flex flex-col gap-1 select-none pointer-events-auto transition-all duration-300 max-h-[calc(100%-86px)] overflow-y-auto scrollbar-none"
+        className={`absolute bottom-[72px] right-3 z-40 w-[114px] flex flex-col gap-1 select-none ${activeTool === 'draw' ? 'pointer-events-none opacity-60' : 'pointer-events-auto'} transition-all duration-300 max-h-[calc(100%-86px)] overflow-y-auto scrollbar-none`}
         id="map-layers-accordion-panel"
       >
         {/* Category 1: 地图工具 */}
@@ -344,45 +317,6 @@ export default function MapLayersPanel({
                 </div>
                 {activeTool === 'measure' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />}
               </button>
-
-              {/* 已保存区域列表 */}
-              {savedRegions.length > 0 && (
-                <div className="pt-1 mt-0.5 border-t border-slate-200/70 flex flex-col gap-1">
-                  <div className="flex items-center justify-between text-[9px] text-slate-500 px-0.5">
-                    <span className="font-semibold text-slate-700">已存区域 ({savedRegions.length})</span>
-                    <button 
-                      onClick={() => {
-                        window.dispatchEvent(new CustomEvent('map-saved-regions-action', { detail: { action: 'clear' } }));
-                      }}
-                      className="text-rose-500 hover:text-rose-700 cursor-pointer text-[8px]"
-                    >
-                      清空
-                    </button>
-                  </div>
-                  <div className="max-h-24 overflow-y-auto flex flex-col gap-0.5 pr-0.5">
-                    {savedRegions.map((reg) => (
-                      <div 
-                        key={reg.id} 
-                        className="flex items-center justify-between px-1 py-0.5 text-[8.5px] bg-blue-50/80 border border-blue-100 rounded text-slate-700 group hover:bg-blue-100/70 transition-colors"
-                      >
-                        <span className="truncate max-w-[48px] font-medium text-blue-900" title={reg.name}>{reg.name}</span>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <span className="text-slate-400 font-mono text-[7.5px]">{reg.areaKm2}</span>
-                          <button
-                            onClick={() => {
-                              window.dispatchEvent(new CustomEvent('map-saved-regions-action', { detail: { action: 'delete', id: reg.id } }));
-                            }}
-                            className="text-slate-400 hover:text-rose-600 cursor-pointer ml-0.5 text-[8.5px] leading-none"
-                            title="删除"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -503,14 +437,14 @@ export default function MapLayersPanel({
         {/* Category 4: 气象数据 (默认叠加雷达实况) */}
         <div className="flex flex-col">
           <button 
-            onClick={() => toggleExpand('weather')}
+            style={{ display: 'none' }} onClick={() => toggleExpand('weather')}
             className="flex items-center justify-between w-full h-7 px-1.5 bg-white/95 backdrop-blur-sm border border-slate-200/60 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
           >
             <span className="text-[10px] font-bold text-slate-800">气象数据</span>
             {expanded.weather ? <ChevronUp className="w-3 h-3 text-slate-400" /> : <ChevronDown className="w-3 h-3 text-slate-400" />}
           </button>
 
-          {expanded.weather && (
+          {false && (
             <div className="mt-0.5 bg-white/90 backdrop-blur-sm border border-slate-200/50 rounded p-1 flex flex-col gap-0.5">
               {/* 雷达实况-全国组网组合反射率 (默认勾选) */}
               <label className="flex items-start gap-1 cursor-pointer text-[9.5px] font-medium text-slate-600 p-0.5 hover:bg-slate-50 rounded">
@@ -714,7 +648,7 @@ export default function MapLayersPanel({
 
   return (
     <div 
-      className={`absolute bottom-[116px] ${rightPosition} z-40 w-[110px] flex flex-col gap-1 select-none pointer-events-auto transition-all duration-300`}
+      className={`absolute bottom-[116px] ${rightPosition} z-40 w-[110px] flex flex-col gap-1 select-none ${activeTool === 'draw' ? 'pointer-events-none opacity-60' : 'pointer-events-auto'} transition-all duration-300`}
       id="map-layers-accordion-panel"
     >
       {/* Category 0: 地图工具 */}
@@ -779,45 +713,6 @@ export default function MapLayersPanel({
               </div>
               {activeTool === 'measure' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />}
             </button>
-
-            {/* 已保存区域列表 */}
-            {savedRegions.length > 0 && (
-              <div className="pt-1 mt-0.5 border-t border-slate-200/70 flex flex-col gap-1">
-                <div className="flex items-center justify-between text-[9px] text-slate-500 px-0.5">
-                  <span className="font-semibold text-slate-700">已存区域 ({savedRegions.length})</span>
-                  <button 
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent('map-saved-regions-action', { detail: { action: 'clear' } }));
-                    }}
-                    className="text-rose-500 hover:text-rose-700 cursor-pointer text-[8px]"
-                  >
-                    清空
-                  </button>
-                </div>
-                <div className="max-h-24 overflow-y-auto flex flex-col gap-0.5 pr-0.5">
-                  {savedRegions.map((reg) => (
-                    <div 
-                      key={reg.id} 
-                      className="flex items-center justify-between px-1 py-0.5 text-[8.5px] bg-blue-50/80 border border-blue-100 rounded text-slate-700 group hover:bg-blue-100/70 transition-colors"
-                    >
-                      <span className="truncate max-w-[48px] font-medium text-blue-900" title={reg.name}>{reg.name}</span>
-                      <div className="flex items-center gap-0.5 shrink-0">
-                        <span className="text-slate-400 font-mono text-[7.5px]">{reg.areaKm2}</span>
-                        <button
-                          onClick={() => {
-                            window.dispatchEvent(new CustomEvent('map-saved-regions-action', { detail: { action: 'delete', id: reg.id } }));
-                          }}
-                          className="text-slate-400 hover:text-rose-600 cursor-pointer ml-0.5 text-[8.5px] leading-none"
-                          title="删除"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -978,17 +873,17 @@ export default function MapLayersPanel({
         )}
       </div>
 
-      {/* Category 4: 气象数据 */}
+      {/* Category 4: 气象数据已移至左下角图例组件 */}
       <div className="flex flex-col">
         <button 
-          onClick={() => toggleExpand('weather')}
+          style={{ display: 'none' }} onClick={() => toggleExpand('weather')}
           className="flex items-center justify-between w-full h-7 px-1.5 bg-white/95 backdrop-blur-sm border border-slate-200/60 rounded text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
         >
           <span className="text-[10px] font-bold">气象数据</span>
           {expanded.weather ? <ChevronUp className="w-3 h-3 text-slate-400" /> : <ChevronDown className="w-3 h-3 text-slate-400" />}
         </button>
 
-        {expanded.weather && (
+        {false && (
           <div className="mt-0.5 bg-white/90 backdrop-blur-sm border border-slate-200/50 rounded p-1 flex flex-col gap-0.5">
             {selectedKeys.length === 0 ? (
               <div className="text-center py-1.5 text-[9px] font-medium text-slate-400 select-none bg-slate-50/50 rounded border border-dashed border-slate-200/30">
